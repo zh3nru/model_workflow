@@ -120,4 +120,4 @@ if __name__ == '__main__':
     frames_dir = 'data/train_gen_frames'  # Fixed directory as per requirement
     frames_ps = 1  # Adjust as needed
 
-    convert_videos_to_frames(joint_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps)
+    convert_videos_to_frames(vids_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps)
