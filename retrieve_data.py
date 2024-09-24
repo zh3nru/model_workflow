@@ -11,10 +11,10 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     Args:
         supabase (Client): Supabase client instance.
         table_name (str): Name of the table to query.
-        storage_bucket (str): Name of the storage bucket containing images.
-        data_dir (str): Base directory to store training images.
+        storage_bucket (str): Name of the storage bucket containing videos.
+        data_dir (str): Base directory to store training videos.
     """
-    # Fetch all records to process (assuming check_new_data.py has already updated flag)
+    # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
     if response.status_code != 200:
@@ -22,12 +22,12 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
 
     data = response.data
 
-    # Iterate through records and download images
+    # Iterate through records and download videos
     for record in tqdm(data, desc="Retrieving Data"):
-        image_url = record.get('image_url')  # Adjust field name as necessary
-        emotion = record.get('emotion')      # Adjust field name as necessary
+        video_path = record.get('video_path')  
+        emotion = record.get('emotion_class')        
 
-        if not image_url or not emotion:
+        if not video_path or not emotion:
             print(f"Skipping record with missing data: {record}")
             continue
 
@@ -38,47 +38,47 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
         emotion_dir = Path(data_dir) / emotion_normalized
         emotion_dir.mkdir(parents=True, exist_ok=True)
 
-        # Define the image filename
-        image_filename = Path(image_url).name  # Extracts the filename from the URL/path
-        image_path = emotion_dir / image_filename
+        # Define the video filename
+        video_filename = Path(video_path).name  # Extracts the filename from the URL/path
+        video_full_path = emotion_dir / video_filename
 
-        # Skip downloading if the image already exists
-        if image_path.exists():
-            print(f"Image already exists: {image_path}. Skipping download.")
+        # Skip downloading if the video already exists
+        if video_full_path.exists():
+            print(f"Video already exists: {video_full_path}. Skipping download.")
             continue
 
         try:
-            # If image_url is a full URL, use requests to download
-            if image_url.startswith('http://') or image_url.startswith('https://'):
-                response = requests.get(image_url, stream=True)
+            # If video_path is a full URL, use requests to download
+            if video_path.startswith('http://') or video_path.startswith('https://'):
+                response = requests.get(video_path, stream=True)
                 if response.status_code == 200:
-                    with open(image_path, 'wb') as f:
+                    with open(video_full_path, 'wb') as f:
                         for chunk in response.iter_content(1024):
                             f.write(chunk)
                 else:
-                    print(f"Failed to download image: {image_url}. Status Code: {response.status_code}")
+                    print(f"Failed to download video: {video_path}. Status Code: {response.status_code}")
                     continue
             else:
-                # If image_url is a path in Supabase Storage, download using Supabase Storage API
+                # If video_path is a path in Supabase Storage, download using Supabase Storage API
                 storage = supabase.storage()
-                # Assuming image_url is the path within the bucket
-                file_response = storage.from_(storage_bucket).download(image_url)
+                # Assuming video_path is the path within the bucket
+                file_response = storage.from_(storage_bucket).download(video_path)
                 if file_response.status_code == 200:
-                    with open(image_path, 'wb') as f:
+                    with open(video_full_path, 'wb') as f:
                         f.write(file_response.data)
                 else:
-                    print(f"Failed to download image from storage: {image_url}. Status Code: {file_response.status_code}")
+                    print(f"Failed to download video from storage: {video_path}. Status Code: {file_response.status_code}")
                     continue
 
-            print(f"Downloaded image: {image_path}")
+            print(f"Downloaded video: {video_full_path}")
 
         except Exception as e:
-            print(f"Error downloading image {image_url}: {e}")
+            print(f"Error downloading video {video_path}: {e}")
             continue
 
 if __name__ == '__main__':
-    SUPABASE_URL = os.getenv('https://zpnrhnnbetfdvnffcrmj.supabase.co')
-    SUPABASE_KEY = os.getenv('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnJobm5iZXRmZHZuZmZjcm1qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyMTYxNTExNywiZXhwIjoyMDM3MTkxMTE3fQ.mAt9GY5mJgn5nhEPGPIP31uiJWNNTVG3eEvv2w9smdk')
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise EnvironmentError("Supabase credentials not found in environment variables.")
@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     retrieve_data(
         supabase,
-        table_name='videos_data',           # Table name is 'videos_data'
-        storage_bucket='videos_bucket',     # Replace 'images_bucket' with your actual storage bucket name
-        data_dir='data/train_gen_vids'    # Ensure this matches the path used in train.py
+        table_name='videos_data',          
+        storage_bucket='videos_bucket',     
+        data_dir='data/train_gen_vids'    
     )
