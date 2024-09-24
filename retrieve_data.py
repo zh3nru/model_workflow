@@ -55,8 +55,13 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
         # Define the target directory based on emotion
         emotion_dir = Path(data_dir) / emotion_normalized
 
-        # Ensure the directory exists
-        emotion_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            # Ensure the directory exists
+            emotion_dir.mkdir(parents=True, exist_ok=True)
+            logging.info(f"Directory {emotion_dir} is ready.")
+        except Exception as e:
+            logging.error(f"Failed to create directory {emotion_dir}: {e}")
+            continue
 
         # Extract the filename from the URL without query parameters
         parsed_url = urlparse(video_url)
@@ -71,19 +76,29 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
         try:
             # Download the video using requests
             logging.info(f"Downloading video from URL: {video_url}")
-            response = requests.get(video_url, stream=True)
+            response = requests.get(video_url, stream=True, timeout=30)
 
             if response.status_code == 200:
                 with open(video_full_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                        if chunk:  # Only write if there's data
+                            f.write(chunk)
                 logging.info(f"Successfully downloaded video: {video_full_path}")
+
+                # Verify if the file was actually saved and has non-zero size
+                if video_full_path.exists() and video_full_path.stat().st_size > 0:
+                    logging.info(f"File saved correctly: {video_full_path}, Size: {video_full_path.stat().st_size} bytes")
+                else:
+                    logging.error(f"File was not saved correctly or is empty: {video_full_path}")
             else:
                 logging.error(f"Failed to download video from URL: {video_url}. Status code: {response.status_code}")
                 continue
 
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error downloading video from URL {video_url}: {e}")
+            continue
         except Exception as e:
-            logging.exception(f"Error downloading video from URL {video_url}: {e}")
+            logging.error(f"Unexpected error occurred while saving video: {e}")
             continue
 
 
