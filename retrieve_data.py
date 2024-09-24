@@ -29,10 +29,6 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
-    # Check if the response has an error attribute
-    if response.get('error'):
-        logging.error(f"Error fetching data: {response['error']['message']}")
-        return  # Exit the function if data retrieval failed
 
     data = response.get('data', [])
 
