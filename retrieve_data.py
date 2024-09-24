@@ -2,7 +2,6 @@ import os
 from supabase import create_client, Client
 from pathlib import Path
 from tqdm import tqdm
-import requests
 import logging
 import sys
 
@@ -29,8 +28,9 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
-    if response.error:
-        logging.error(f"Error retrieving data from the table: {response.error}")
+    # Check if the response has the expected data
+    if not response or not hasattr(response, 'data') or response.data is None:
+        logging.error(f"Error retrieving data from the table. Response received: {response}")
         return
 
     data = response.data
@@ -49,10 +49,12 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
             continue
 
         # Normalize emotion label to lowercase for directory naming consistency
-        emotion_normalized = emotion.lower()
+        emotion_normalized = emotion
 
         # Define the target directory based on emotion
         emotion_dir = Path(data_dir) / emotion_normalized
+
+        # Ensure the directory exists
         emotion_dir.mkdir(parents=True, exist_ok=True)
 
         # Define the video filename
@@ -69,9 +71,9 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
             storage = supabase.storage()
             file_response = storage.from_(storage_bucket).download(video_path)
             
-            if file_response.data:
+            if file_response:
                 with open(video_full_path, 'wb') as f:
-                    f.write(file_response.data)
+                    f.write(file_response)
                 logging.info(f"Successfully downloaded video: {video_full_path}")
             else:
                 logging.error(f"Failed to download video from storage: {video_path}.")
