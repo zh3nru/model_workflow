@@ -18,7 +18,7 @@ logging.basicConfig(
 
 def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_bucket: str = 'videos_bucket', data_dir: str = 'data/train_gen_vids'):
     """
-    Retrieves new data from Supabase and organizes it into emotion-specific training directories.
+    Retrieves new data from Supabase Storage using URLs in the table and organizes it into emotion-specific training directories.
 
     Args:
         supabase (Client): Supabase client instance.
@@ -29,8 +29,11 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
+    if response.error:
+        logging.error(f"Error retrieving data from the table: {response.error}")
+        return
 
-    data = response.get('data', [])
+    data = response.data
 
     if not data:
         logging.info("No data retrieved from the database.")
@@ -38,7 +41,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
 
     # Iterate through records and download videos
     for record in tqdm(data, desc="Retrieving Data"):
-        video_path = record.get('video_path')  # Adjust field name as necessary
+        video_path = record.get('video_path')  # Assumes video_path contains the path to the video in the bucket
         emotion = record.get('emotion_class')  # Adjust field name as necessary
 
         if not video_path or not emotion:
@@ -53,7 +56,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
         emotion_dir.mkdir(parents=True, exist_ok=True)
 
         # Define the video filename
-        video_filename = Path(video_path).name  # Extracts the filename from the URL/path
+        video_filename = Path(video_path).name  # Extracts the filename from the path
         video_full_path = emotion_dir / video_filename
 
         # Skip downloading if the video already exists
@@ -62,29 +65,17 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
             continue
 
         try:
-            # If video_path is a full URL, use requests to download
-            if video_path.startswith('http://') or video_path.startswith('https://'):
-                response = requests.get(video_path, stream=True)
-                if response.status_code == 200:
-                    with open(video_full_path, 'wb') as f:
-                        for chunk in response.iter_content(1024):
-                            f.write(chunk)
-                    logging.info(f"Successfully downloaded video: {video_full_path}")
-                else:
-                    logging.error(f"Failed to download video: {video_path}. Status Code: {response.status_code}")
-                    continue
+            # Use Supabase storage client to download the file
+            storage = supabase.storage()
+            file_response = storage.from_(storage_bucket).download(video_path)
+            
+            if file_response.data:
+                with open(video_full_path, 'wb') as f:
+                    f.write(file_response.data)
+                logging.info(f"Successfully downloaded video: {video_full_path}")
             else:
-                # If video_path is a path in Supabase Storage, download using Supabase Storage API
-                storage = supabase.storage()
-                # Assuming video_path is the path within the bucket
-                file_response = storage.from_(storage_bucket).download(video_path)
-                if file_response:
-                    with open(video_full_path, 'wb') as f:
-                        f.write(file_response.data)
-                    logging.info(f"Successfully downloaded video from storage: {video_full_path}")
-                else:
-                    logging.error(f"Failed to download video from storage: {video_path}.")
-                    continue
+                logging.error(f"Failed to download video from storage: {video_path}.")
+                continue
 
         except Exception as e:
             logging.exception(f"Error downloading video {video_path}: {e}")
