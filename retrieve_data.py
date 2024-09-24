@@ -54,7 +54,7 @@ def upload_to_github(file_path, repo_name, github_token, target_folder, commit_m
 
 def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = 'data/train_gen_vids', repo_name: str = '', target_folder: str = '', github_token: str = ''):
     """
-    Retrieves new data using URLs in the table, saves them locally, and uploads them to a GitHub repository.
+    Retrieves new data using URLs in the table, saves them locally in folders based on emotion, and uploads them to a GitHub repository.
 
     Args:
         supabase (Client): Supabase client instance.
@@ -85,7 +85,8 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
             logging.warning(f"Skipping record with missing data: {record}")
             continue
 
-        emotion_normalized = emotion
+        # Normalize the emotion to be used as a directory name
+        emotion_normalized = emotion.strip().replace(" ", "_")
         emotion_dir = Path(data_dir) / emotion_normalized
 
         try:
@@ -117,8 +118,8 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
                 if video_full_path.exists() and video_full_path.stat().st_size > 0:
                     logging.info(f"File saved correctly: {video_full_path}, Size: {video_full_path.stat().st_size} bytes")
 
-                    # Upload to GitHub
-                    upload_to_github(video_full_path, repo_name, github_token, target_folder)
+                    # Upload to GitHub with the updated path
+                    upload_to_github(video_full_path, repo_name, github_token, f"{target_folder}/{emotion_normalized}")
                 else:
                     logging.error(f"File was not saved correctly or is empty: {video_full_path}")
             else:
