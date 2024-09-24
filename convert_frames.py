@@ -5,14 +5,15 @@ from tqdm import tqdm
 import logging
 import sys
 
-def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 1):
+def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 1, max_frames: int = 5):
     """
-    Extracts frames from a video file and saves them to the specified directory.
+    Extracts frames from a video file and saves them to the specified directory, up to a maximum of 5 frames.
 
     Args:
         video_path (Path): Path to the video file.
         output_dir (Path): Directory where extracted frames will be saved.
         frames_per_second (int): Number of frames to extract per second of video.
+        max_frames (int): Maximum number of frames to extract from the video.
     """
     try:
         vidcap = cv2.VideoCapture(str(video_path))
@@ -28,7 +29,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         frame_interval = int(fps / frames_per_second)
         frame_count = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration_seconds = frame_count / fps
-        total_frames_to_extract = frames_per_second * int(duration_seconds)
+        total_frames_to_extract = min(frames_per_second * int(duration_seconds), max_frames)
 
         logging.info(f"Processing video: {video_path}")
         logging.info(f"FPS: {fps}, Frame Interval: {frame_interval}, Total Frames to Extract: {total_frames_to_extract}")
@@ -36,7 +37,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         current_frame = 0
         extracted_frames = 0
 
-        while True:
+        while extracted_frames < max_frames:
             success, frame = vidcap.read()
             if not success:
                 break
@@ -46,6 +47,8 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
                 frame_filepath = output_dir / frame_filename
                 cv2.imwrite(str(frame_filepath), frame)
                 extracted_frames += 1
+                if extracted_frames >= max_frames:
+                    break
 
             current_frame += 1
 
@@ -55,14 +58,15 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
     except Exception as e:
         logging.error(f"Error processing video {video_path}: {e}")
 
-def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_data_dir: str = 'data/train_gen_frames', frames_per_second: int = 1):
+def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_data_dir: str = 'data/train_gen_frames', frames_per_second: int = 1, max_frames: int = 5):
     """
-    Converts all videos in the joint_data_dir into image frames stored in frames_data_dir.
+    Converts all videos in the vids_data_dir into image frames stored in frames_data_dir.
 
     Args:
-        joint_data_dir (str): Directory containing videos organized by emotion.
+        vids_data_dir (str): Directory containing videos organized by emotion.
         frames_data_dir (str): Directory where frames will be stored organized by emotion.
         frames_per_second (int): Number of frames to extract per second of video.
+        max_frames (int): Maximum number of frames to extract per video.
     """
     joint_data_path = Path(vids_data_dir)
     frames_data_path = Path(frames_data_dir)
@@ -96,7 +100,7 @@ def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_
                         logging.info(f"Frames already exist for video {video_file.name}. Skipping extraction.")
                         continue
 
-                    convert_frames(video_file, video_frames_dir, frames_per_second=frames_per_second)
+                    convert_frames(video_file, video_frames_dir, frames_per_second=frames_per_second, max_frames=max_frames)
                 else:
                     logging.warning(f"Unsupported or non-file item skipped: {video_file}")
 
@@ -119,5 +123,6 @@ if __name__ == '__main__':
     vids_dir = os.getenv('train_data_path', 'data/train_gen_vids')
     frames_dir = 'data/train_gen_frames'  # Fixed directory as per requirement
     frames_ps = 1  # Adjust as needed
+    max_frames = 5  # Extract up to 5 frames per video
 
-    convert_videos_to_frames(vids_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps)
+    convert_videos_to_frames(vids_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps, max_frames=max_frames)
