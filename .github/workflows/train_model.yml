@@ -16,6 +16,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      MY_TOKEN: ${{ secrets.MY_TOKEN }}
       TRAIN_DATA_PATH: 'data/train_gen_frames'         
       VALIDATION_DATA_PATH: 'data/train_gen_frames'    
 
