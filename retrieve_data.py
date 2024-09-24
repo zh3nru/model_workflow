@@ -2,6 +2,7 @@ import os
 from supabase import create_client, Client
 from pathlib import Path
 from tqdm import tqdm
+import requests
 import logging
 import sys
 
@@ -15,14 +16,13 @@ logging.basicConfig(
     ]
 )
 
-def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_bucket: str = 'videos_bucket', data_dir: str = 'data/train_gen_vids'):
+def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = 'data/train_gen_vids'):
     """
-    Retrieves new data from Supabase Storage using URLs in the table and organizes it into emotion-specific training directories.
+    Retrieves new data using URLs in the table and organizes it into emotion-specific training directories.
 
     Args:
         supabase (Client): Supabase client instance.
         table_name (str): Name of the table to query.
-        storage_bucket (str): Name of the storage bucket containing videos.
         data_dir (str): Base directory to store training videos.
     """
     # Fetch all records to process
@@ -41,10 +41,10 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
 
     # Iterate through records and download videos
     for record in tqdm(data, desc="Retrieving Data"):
-        video_path = record.get('video_path')  # Assumes video_path contains the path to the video in the bucket
+        video_url = record.get('video_path')  # Assumes video_path contains the full HTTP URL
         emotion = record.get('emotion_class')  # Adjust field name as necessary
 
-        if not video_path or not emotion:
+        if not video_url or not emotion:
             logging.warning(f"Skipping record with missing data: {record}")
             continue
 
@@ -58,7 +58,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
         emotion_dir.mkdir(parents=True, exist_ok=True)
 
         # Define the video filename
-        video_filename = Path(video_path).name  # Extracts the filename from the path
+        video_filename = Path(video_url).name  # Extracts the filename from the URL
         video_full_path = emotion_dir / video_filename
 
         # Skip downloading if the video already exists
@@ -67,20 +67,21 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
             continue
 
         try:
-            # Access the storage client correctly
-            storage = supabase.storage
-            file_response = storage.from_(storage_bucket).download(video_path)
-            
-            if file_response:
+            # Download the video using requests
+            logging.info(f"Downloading video from URL: {video_url}")
+            response = requests.get(video_url, stream=True)
+
+            if response.status_code == 200:
                 with open(video_full_path, 'wb') as f:
-                    f.write(file_response)
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
                 logging.info(f"Successfully downloaded video: {video_full_path}")
             else:
-                logging.error(f"Failed to download video from storage: {video_path}.")
+                logging.error(f"Failed to download video from URL: {video_url}. Status code: {response.status_code}")
                 continue
 
         except Exception as e:
-            logging.exception(f"Error downloading video {video_path}: {e}")
+            logging.exception(f"Error downloading video from URL {video_url}: {e}")
             continue
 
 
@@ -96,7 +97,6 @@ if __name__ == '__main__':
 
     retrieve_data(
         supabase,
-        table_name='videos_data',          
-        storage_bucket='videos_bucket',     
-        data_dir='data/train_gen_vids'    
+        table_name='videos_data',
+        data_dir='data/train_gen_vids'
     )
