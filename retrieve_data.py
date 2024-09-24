@@ -50,7 +50,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
             continue
 
         # Normalize emotion label to lowercase for directory naming consistency
-        emotion_normalized = emotion.lower()
+        emotion_normalized = emotion
 
         # Define the target directory based on emotion
         emotion_dir = Path(data_dir) / emotion_normalized
