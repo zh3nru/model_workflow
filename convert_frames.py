@@ -16,6 +16,10 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         max_frames (int): Maximum number of frames to extract from the video.
     """
     try:
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True, exist_ok=True)
+            logging.info(f"Created output directory: {output_dir}")
+
         vidcap = cv2.VideoCapture(str(video_path))
         if not vidcap.isOpened():
             logging.error(f"Cannot open video file: {video_path}")
@@ -40,12 +44,19 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         while extracted_frames < max_frames:
             success, frame = vidcap.read()
             if not success:
+                logging.error(f"Failed to read frame at position {current_frame}")
                 break
+
+            if frame is None:
+                logging.error(f"Frame is None at position {current_frame}. Skipping.")
+                continue
 
             if current_frame % frame_interval == 0:
                 frame_filename = f"{video_path.stem}_frame{extracted_frames + 1}.jpg"
                 frame_filepath = output_dir / frame_filename
                 
+                logging.info(f"Attempting to save frame {extracted_frames + 1} to {frame_filepath}")
+
                 # Attempt to save the frame
                 if cv2.imwrite(str(frame_filepath), frame):
                     logging.info(f"Saved frame {extracted_frames + 1} as {frame_filename}")
