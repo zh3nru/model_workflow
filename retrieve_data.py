@@ -30,7 +30,7 @@ def upload_to_github(file_path, repo_name, github_token, target_folder, commit_m
         target_folder (str): The folder in the GitHub repo where the file will be uploaded.
         commit_message (str): Commit message for the upload.
     """
-    github_api_url = f"https://api.github.com/repos/{repo_name}/data/{target_folder}/{file_path.name}"
+    github_api_url = f"https://api.github.com/repos/{repo_name}/contents/{target_folder}/{file_path.name}"
 
     with open(file_path, "rb") as file:
         content = b64encode(file.read()).decode('utf-8')
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
     MY_TOKEN = os.getenv('MY_TOKEN')
     GITHUB_REPO = 'zh3nru/model_CI'  # Replace with your GitHub repo name
-    TARGET_FOLDER = 'train_gen_vids'  # The folder path in your GitHub repo where files will be uploaded
+    TARGET_FOLDER = 'data/train_gen_vids'  # The folder path in your GitHub repo where files will be uploaded
 
     if not SUPABASE_URL or not SUPABASE_KEY or not MY_TOKEN:
         logging.critical("Supabase credentials or GitHub token not found in environment variables.")
