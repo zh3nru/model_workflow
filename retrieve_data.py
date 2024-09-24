@@ -28,10 +28,10 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
-    # Check if there was an error in the response
-    if response.error:
-        logging.error(f"Error fetching data: {response.error}")
-        raise Exception(f"Error fetching data: {response.error}")
+    # Log an error message if the status code indicates a failure
+    if response.status_code != 200:
+        logging.error(f"Error fetching data: Status Code: {response.status_code}")
+        return  # Exit the function if data retrieval failed
 
     data = response.data
 
@@ -100,7 +100,7 @@ if __name__ == '__main__':
 
     if not SUPABASE_URL or not SUPABASE_KEY:
         logging.critical("Supabase credentials not found in environment variables.")
-        raise EnvironmentError("Supabase credentials not found in environment variables.")
+        return
 
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
