@@ -91,16 +91,13 @@ def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_
             video_files = list(emotion_dir.glob('*'))
             for video_file in tqdm(video_files, desc=f"Processing {emotion_name}", unit="video"):
                 if video_file.is_file() and video_file.suffix in ['.mp4', '.avi', '.mov', '.mkv']:
-                    # Define a subdirectory for each video to store its frames
-                    video_frames_dir = target_frames_dir / video_file.stem
-                    video_frames_dir.mkdir(parents=True, exist_ok=True)
-
                     # Check if frames already extracted for this video
-                    if any(video_frames_dir.iterdir()):
+                    if any(target_frames_dir.glob(f"{video_file.stem}_frame*.jpg")):
                         logging.info(f"Frames already exist for video {video_file.name}. Skipping extraction.")
                         continue
 
-                    convert_frames(video_file, video_frames_dir, frames_per_second=frames_per_second, max_frames=max_frames)
+                    # Save frames directly in the emotion directory
+                    convert_frames(video_file, target_frames_dir, frames_per_second=frames_per_second, max_frames=max_frames)
                 else:
                     logging.warning(f"Unsupported or non-file item skipped: {video_file}")
 
