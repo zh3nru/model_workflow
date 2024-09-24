@@ -17,22 +17,27 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {response.status_code}")
+    # Check if there was an error in the response
+    if response.error:
+        raise Exception(f"Error fetching data: {response.error}")
 
     data = response.data
 
+    if not data:
+        print("No data retrieved from the database.")
+        return
+
     # Iterate through records and download videos
     for record in tqdm(data, desc="Retrieving Data"):
-        video_path = record.get('video_path')  
-        emotion = record.get('emotion_class')        
+        video_path = record.get('video_path')  # Adjust field name as necessary
+        emotion = record.get('emotion_class')        # Adjust field name as necessary
 
         if not video_path or not emotion:
             print(f"Skipping record with missing data: {record}")
             continue
 
         # Normalize emotion label to lowercase for directory naming consistency
-        emotion_normalized = emotion
+        emotion_normalized = emotion.lower()
 
         # Define the target directory based on emotion
         emotion_dir = Path(data_dir) / emotion_normalized
@@ -75,6 +80,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
         except Exception as e:
             print(f"Error downloading video {video_path}: {e}")
             continue
+
 
 if __name__ == '__main__':
     SUPABASE_URL = os.getenv('SUPABASE_URL')
