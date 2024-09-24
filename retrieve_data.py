@@ -4,6 +4,7 @@ from pathlib import Path
 from tqdm import tqdm
 import requests
 import logging
+import sys  # Import sys to use sys.exit()
 
 # Set up logging
 logging.basicConfig(
@@ -100,7 +101,7 @@ if __name__ == '__main__':
 
     if not SUPABASE_URL or not SUPABASE_KEY:
         logging.critical("Supabase credentials not found in environment variables.")
-        return
+        sys.exit(1)  # Use sys.exit() to terminate the script if credentials are missing
 
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
