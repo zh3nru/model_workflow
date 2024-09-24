@@ -45,8 +45,14 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
             if current_frame % frame_interval == 0:
                 frame_filename = f"{video_path.stem}_frame{extracted_frames + 1}.jpg"
                 frame_filepath = output_dir / frame_filename
-                cv2.imwrite(str(frame_filepath), frame)
-                extracted_frames += 1
+                
+                # Attempt to save the frame
+                if cv2.imwrite(str(frame_filepath), frame):
+                    logging.info(f"Saved frame {extracted_frames + 1} as {frame_filename}")
+                    extracted_frames += 1
+                else:
+                    logging.error(f"Failed to save frame {extracted_frames + 1} as {frame_filename}")
+
                 if extracted_frames >= max_frames:
                     break
 
@@ -90,7 +96,7 @@ def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_
             # Iterate through each video file in the emotion directory
             video_files = list(emotion_dir.glob('*'))
             for video_file in tqdm(video_files, desc=f"Processing {emotion_name}", unit="video"):
-                if video_file.is_file() and video_file.suffix in ['.mp4', '.avi', '.mov', '.mkv']:
+                if video_file.is_file() and video_file.suffix.lower() in ['.mp4', '.avi', '.mov', '.mkv']:
                     # Check if frames already extracted for this video
                     if any(target_frames_dir.glob(f"{video_file.stem}_frame*.jpg")):
                         logging.info(f"Frames already exist for video {video_file.name}. Skipping extraction.")
