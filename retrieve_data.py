@@ -17,14 +17,14 @@ logging.basicConfig(
     ]
 )
 
-def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = 'data/train_gen_vids'):
+def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = './model_CI/data/train_gen_vids'):
     """
     Retrieves new data using URLs in the table and organizes it into emotion-specific training directories.
 
     Args:
         supabase (Client): Supabase client instance.
         table_name (str): Name of the table to query.
-        data_dir (str): Base directory to store training videos.
+        data_dir (str): Base directory to store training videos within the GitHub repository.
     """
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
@@ -112,8 +112,9 @@ if __name__ == '__main__':
 
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+    # Make sure 'my-github-repo-folder' matches your GitHub repository folder structure
     retrieve_data(
         supabase,
         table_name='videos_data',
-        data_dir='data/train_gen_vids'
+        data_dir='./model_CI/data/train_gen_vids'
     )
