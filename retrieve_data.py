@@ -135,11 +135,11 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
 if __name__ == '__main__':
     SUPABASE_URL = os.getenv('SUPABASE_URL')
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-    GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+    MY_TOKEN = os.getenv('MY_TOKEN')
     GITHUB_REPO = 'zh3nru/model_CI'  # Replace with your GitHub repo name
     TARGET_FOLDER = 'train_gen_vids'  # The folder path in your GitHub repo where files will be uploaded
 
-    if not SUPABASE_URL or not SUPABASE_KEY or not GITHUB_TOKEN:
+    if not SUPABASE_URL or not SUPABASE_KEY or not MY_TOKEN:
         logging.critical("Supabase credentials or GitHub token not found in environment variables.")
         sys.exit(1)
 
@@ -151,5 +151,5 @@ if __name__ == '__main__':
         data_dir='data/train_gen_vids',
         repo_name=GITHUB_REPO,
         target_folder=TARGET_FOLDER,
-        github_token=GITHUB_TOKEN
+        github_token=MY_TOKEN
     )
