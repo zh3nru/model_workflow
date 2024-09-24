@@ -3,6 +3,17 @@ from supabase import create_client, Client
 from pathlib import Path
 from tqdm import tqdm
 import requests
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("retrieve_data.log"),  # Log to a file
+        logging.StreamHandler()                   # Log to console
+    ]
+)
 
 def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_bucket: str = 'videos_bucket', data_dir: str = 'data/train_gen_vids'):
     """
@@ -19,21 +30,22 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
 
     # Check if there was an error in the response
     if response.error:
+        logging.error(f"Error fetching data: {response.error}")
         raise Exception(f"Error fetching data: {response.error}")
 
     data = response.data
 
     if not data:
-        print("No data retrieved from the database.")
+        logging.info("No data retrieved from the database.")
         return
 
     # Iterate through records and download videos
     for record in tqdm(data, desc="Retrieving Data"):
         video_path = record.get('video_path')  # Adjust field name as necessary
-        emotion = record.get('emotion_class')        # Adjust field name as necessary
+        emotion = record.get('emotion_class')  # Adjust field name as necessary
 
         if not video_path or not emotion:
-            print(f"Skipping record with missing data: {record}")
+            logging.warning(f"Skipping record with missing data: {record}")
             continue
 
         # Normalize emotion label to lowercase for directory naming consistency
@@ -49,7 +61,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
 
         # Skip downloading if the video already exists
         if video_full_path.exists():
-            print(f"Video already exists: {video_full_path}. Skipping download.")
+            logging.info(f"Video already exists: {video_full_path}. Skipping download.")
             continue
 
         try:
@@ -60,8 +72,9 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
                     with open(video_full_path, 'wb') as f:
                         for chunk in response.iter_content(1024):
                             f.write(chunk)
+                    logging.info(f"Successfully downloaded video: {video_full_path}")
                 else:
-                    print(f"Failed to download video: {video_path}. Status Code: {response.status_code}")
+                    logging.error(f"Failed to download video: {video_path}. Status Code: {response.status_code}")
                     continue
             else:
                 # If video_path is a path in Supabase Storage, download using Supabase Storage API
@@ -71,14 +84,13 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
                 if file_response.status_code == 200:
                     with open(video_full_path, 'wb') as f:
                         f.write(file_response.data)
+                    logging.info(f"Successfully downloaded video from storage: {video_full_path}")
                 else:
-                    print(f"Failed to download video from storage: {video_path}. Status Code: {file_response.status_code}")
+                    logging.error(f"Failed to download video from storage: {video_path}. Status Code: {file_response.status_code}")
                     continue
 
-            print(f"Downloaded video: {video_full_path}")
-
         except Exception as e:
-            print(f"Error downloading video {video_path}: {e}")
+            logging.exception(f"Error downloading video {video_path}: {e}")
             continue
 
 
@@ -87,6 +99,7 @@ if __name__ == '__main__':
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
     if not SUPABASE_URL or not SUPABASE_KEY:
+        logging.critical("Supabase credentials not found in environment variables.")
         raise EnvironmentError("Supabase credentials not found in environment variables.")
 
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
