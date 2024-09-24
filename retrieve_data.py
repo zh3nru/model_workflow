@@ -4,7 +4,7 @@ from pathlib import Path
 from tqdm import tqdm
 import requests
 import logging
-import sys  # Import sys to use sys.exit()
+import sys
 
 # Set up logging
 logging.basicConfig(
@@ -29,12 +29,12 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
     # Fetch all records to process
     response = supabase.table(table_name).select('*').execute()
 
-    # Log an error message if the status code indicates a failure
-    if response.status_code != 200:
-        logging.error(f"Error fetching data: Status Code: {response.status_code}")
+    # Check if the response has an error attribute
+    if response.get('error'):
+        logging.error(f"Error fetching data: {response['error']['message']}")
         return  # Exit the function if data retrieval failed
 
-    data = response.data
+    data = response.get('data', [])
 
     if not data:
         logging.info("No data retrieved from the database.")
@@ -82,12 +82,12 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
                 storage = supabase.storage()
                 # Assuming video_path is the path within the bucket
                 file_response = storage.from_(storage_bucket).download(video_path)
-                if file_response.status_code == 200:
+                if file_response:
                     with open(video_full_path, 'wb') as f:
                         f.write(file_response.data)
                     logging.info(f"Successfully downloaded video from storage: {video_full_path}")
                 else:
-                    logging.error(f"Failed to download video from storage: {video_path}. Status Code: {file_response.status_code}")
+                    logging.error(f"Failed to download video from storage: {video_path}.")
                     continue
 
         except Exception as e:
@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     if not SUPABASE_URL or not SUPABASE_KEY:
         logging.critical("Supabase credentials not found in environment variables.")
-        sys.exit(1)  # Use sys.exit() to terminate the script if credentials are missing
+        sys.exit(1)
 
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
