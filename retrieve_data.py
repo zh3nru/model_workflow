@@ -5,6 +5,7 @@ from tqdm import tqdm
 import requests
 import logging
 import sys
+from urllib.parse import urlparse, unquote
 
 # Set up logging
 logging.basicConfig(
@@ -49,7 +50,7 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
             continue
 
         # Normalize emotion label to lowercase for directory naming consistency
-        emotion_normalized = emotion
+        emotion_normalized = emotion.lower()
 
         # Define the target directory based on emotion
         emotion_dir = Path(data_dir) / emotion_normalized
@@ -57,8 +58,9 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
         # Ensure the directory exists
         emotion_dir.mkdir(parents=True, exist_ok=True)
 
-        # Define the video filename
-        video_filename = Path(video_url).name  # Extracts the filename from the URL
+        # Extract the filename from the URL without query parameters
+        parsed_url = urlparse(video_url)
+        video_filename = unquote(Path(parsed_url.path).name)  # Extracts the clean filename from the path
         video_full_path = emotion_dir / video_filename
 
         # Skip downloading if the video already exists
