@@ -67,8 +67,8 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', storage_buc
             continue
 
         try:
-            # Use Supabase storage client to download the file
-            storage = supabase.storage()
+            # Access the storage client correctly
+            storage = supabase.storage
             file_response = storage.from_(storage_bucket).download(video_path)
             
             if file_response:
