@@ -138,7 +138,8 @@ if __name__ == '__main__':
     # Modified part: Scan each subfolder in the joint_data_path
     for emotion_subfolder in joint_data_path.iterdir():
         if emotion_subfolder.is_dir():
+            emotion_name = emotion_subfolder.name
             for video_file in emotion_subfolder.glob('*.mp4'):  
-                output_directory = frames_data_path / emotion_subfolder.name
+                output_directory = frames_data_path / emotion_name  # Ensure frames are saved in the emotion-specific folder
                 output_directory.mkdir(parents=True, exist_ok=True)
                 convert_frames(video_file, output_directory, frames_per_second=frames_ps)
