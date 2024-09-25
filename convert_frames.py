@@ -1,40 +1,21 @@
 import os
 import cv2
-import base64
 from pathlib import Path
 from tqdm import tqdm
 import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def image_to_base64(image_path: Path) -> str:
+def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 1):
     """
-    Converts an image file to a base64 string.
-
-    Args:
-        image_path (Path): Path to the image file.
-    
-    Returns:
-        str: Base64 string representation of the image.
-    """
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode('utf-8')
-
-def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 1, max_frames: int = 5):
-    """
-    Extracts frames from a video file and saves them to the specified directory, up to a maximum of 5 frames.
+    Extracts frames from a video file and saves them to the specified directory.
 
     Args:
         video_path (Path): Path to the video file.
         output_dir (Path): Directory where extracted frames will be saved.
         frames_per_second (int): Number of frames to extract per second of video.
-        max_frames (int): Maximum number of frames to extract from the video.
     """
     try:
-        output_dir = output_dir.resolve()  # Ensure absolute path
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True, exist_ok=True)
-            logging.info(f"Created output directory: {output_dir}")
-
         vidcap = cv2.VideoCapture(str(video_path))
         if not vidcap.isOpened():
             logging.error(f"Cannot open video file: {video_path}")
@@ -48,7 +29,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         frame_interval = int(fps / frames_per_second)
         frame_count = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration_seconds = frame_count / fps
-        total_frames_to_extract = min(frames_per_second * int(duration_seconds), max_frames)
+        total_frames_to_extract = frames_per_second * int(duration_seconds)
 
         logging.info(f"Processing video: {video_path}")
         logging.info(f"FPS: {fps}, Frame Interval: {frame_interval}, Total Frames to Extract: {total_frames_to_extract}")
@@ -56,38 +37,20 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         current_frame = 0
         extracted_frames = 0
 
-        while extracted_frames < max_frames:
-            success, frame = vidcap.read()
-            if not success:
-                logging.error(f"Failed to read frame at position {current_frame}")
-                break
-
-            if frame is None:
-                logging.error(f"Frame is None at position {current_frame}. Skipping.")
-                continue
-
-            if current_frame % frame_interval == 0:
-                frame_filename = f"{video_path.stem}_frame{extracted_frames + 1}.jpg"
-                frame_filepath = output_dir / frame_filename
-                
-                logging.info(f"Attempting to save frame {extracted_frames + 1} to {frame_filepath}")
-
-                # Attempt to save the frame
-                if cv2.imwrite(str(frame_filepath), frame):
-                    logging.info(f"Saved frame {extracted_frames + 1} as {frame_filename}")
-                    
-                    # Convert saved frame to base64 and log
-                    image_base64 = image_to_base64(frame_filepath)
-                    logging.info(f"Extracted frame {extracted_frames + 1} (base64): {image_base64[:100]}...")  # Logging first 100 characters for brevity
-                    
-                    extracted_frames += 1
-                else:
-                    logging.error(f"Failed to save frame {extracted_frames + 1} as {frame_filename}")
-
-                if extracted_frames >= max_frames:
+        with tqdm(total=frame_count, desc=f"Extracting frames from {video_path.name}", unit="frame") as pbar:
+            while True:
+                success, frame = vidcap.read()
+                if not success:
                     break
 
-            current_frame += 1
+                if current_frame % frame_interval == 0:
+                    frame_filename = f"{video_path.stem}_frame{extracted_frames + 1}.jpg"
+                    frame_filepath = output_dir / frame_filename
+                    cv2.imwrite(str(frame_filepath), frame)
+                    extracted_frames += 1
+
+                current_frame += 1
+                pbar.update(1)
 
         vidcap.release()
         logging.info(f"Extracted {extracted_frames} frames from {video_path}")
@@ -95,18 +58,39 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
     except Exception as e:
         logging.error(f"Error processing video {video_path}: {e}")
 
-def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_data_dir: str = 'data/train_gen_frames', frames_per_second: int = 1, max_frames: int = 5):
+def process_videos_in_parallel(video_files, frames_data_path, frames_per_second):
     """
-    Converts all videos in the vids_data_dir into image frames stored in frames_data_dir.
+    Processes multiple videos in parallel using ThreadPoolExecutor.
 
     Args:
-        vids_data_dir (str): Directory containing videos organized by emotion.
+        video_files (list): List of video files to process.
+        frames_data_path (Path): Path to save frames.
+        frames_per_second (int): Number of frames to extract per second.
+    """
+    with ThreadPoolExecutor() as executor:
+        future_to_video = {
+            executor.submit(convert_frames, video_file, frames_data_path / video_file.stem, frames_per_second): video_file
+            for video_file in video_files
+        }
+
+        for future in tqdm(as_completed(future_to_video), total=len(video_files), desc="Processing videos", unit="video"):
+            video_file = future_to_video[future]
+            try:
+                future.result()
+            except Exception as exc:
+                logging.error(f"Video {video_file} generated an exception: {exc}")
+
+def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_data_dir: str = 'data/train_gen_frames', frames_per_second: int = 1):
+    """
+    Converts all videos in the joint_data_dir into image frames stored in frames_data_dir.
+
+    Args:
+        joint_data_dir (str): Directory containing videos organized by emotion.
         frames_data_dir (str): Directory where frames will be stored organized by emotion.
         frames_per_second (int): Number of frames to extract per second of video.
-        max_frames (int): Maximum number of frames to extract per video.
     """
-    joint_data_path = Path(vids_data_dir).resolve()
-    frames_data_path = Path(frames_data_dir).resolve()
+    joint_data_path = Path(vids_data_dir)
+    frames_data_path = Path(frames_data_dir)
 
     if not joint_data_path.exists():
         logging.critical(f"Video data directory does not exist: {joint_data_path}")
@@ -124,19 +108,15 @@ def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_
             logging.info(f"Processing emotion: {emotion_name}")
             logging.info(f"Frames will be saved to: {target_frames_dir}")
 
-            # Iterate through each video file in the emotion directory
+            # Collect all video files
             video_files = list(emotion_dir.glob('*'))
-            for video_file in tqdm(video_files, desc=f"Processing {emotion_name}", unit="video"):
-                if video_file.is_file() and video_file.suffix.lower() in ['.mp4', '.avi', '.mov', '.mkv']:
-                    # Check if frames already extracted for this video
-                    if any(target_frames_dir.glob(f"{video_file.stem}_frame*.jpg")):
-                        logging.info(f"Frames already exist for video {video_file.name}. Skipping extraction.")
-                        continue
+            video_files = [vf for vf in video_files if vf.is_file() and vf.suffix in ['.mp4', '.avi', '.mov', '.mkv']]
 
-                    # Extract frames to the target emotion directory
-                    convert_frames(video_file, target_frames_dir, frames_per_second=frames_per_second, max_frames=max_frames)
-                else:
-                    logging.warning(f"Unsupported or non-file item skipped: {video_file}")
+            if not video_files:
+                logging.warning(f"No supported video files found in {emotion_dir}")
+                continue
+
+            process_videos_in_parallel(video_files, target_frames_dir, frames_per_second)
 
 def setup_logging():
     """
@@ -153,10 +133,9 @@ def setup_logging():
 if __name__ == '__main__':
     setup_logging()
 
-    # Retrieve environment variables or use absolute paths
-    vids_dir = os.getenv('train_data_path', os.path.abspath('data/train_gen_vids'))
-    frames_dir = os.path.abspath('data/train_gen_frames')  # Using absolute path
+    # Retrieve environment variables or use default paths
+    vids_dir = os.getenv('train_data_path', 'data/train_gen_vids')
+    frames_dir = 'data/train_gen_frames'  # Fixed directory as per requirement
     frames_ps = 1  # Adjust as needed
-    max_frames = 5  # Extract up to 5 frames per video
 
-    convert_videos_to_frames(vids_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps, max_frames=max_frames)
+    convert_videos_to_frames(vids_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps)
