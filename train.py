@@ -10,13 +10,13 @@ from sklearn.preprocessing import LabelEncoder
 
 import cv2
 import tensorflow as tf
-from keras.models import load_model, model_from_json, Sequential
-from keras.layers import Conv2D, MaxPooling2D, Dense, Dropout, Flatten
-from keras.optimizers import Adam
-from keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
-from keras import layers
-from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.utils import to_categorical, plot_model
+from tensorflow.keras.models import load_model, model_from_json, Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Dropout, Flatten
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
+from tensorflow.keras import layers
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.utils import to_categorical, plot_model
 from tqdm import tqdm
 import datetime as dt
 import imageio
