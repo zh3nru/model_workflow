@@ -9,27 +9,19 @@ import sys
 from urllib.parse import urlparse, unquote
 from base64 import b64encode
 
-# Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("retrieve_data.log"),  # Log to a file
-        logging.StreamHandler()                   # Log to console
+        logging.FileHandler("retrieve_data.log"),  
+        logging.StreamHandler()                   
     ]
 )
 
 def upload_to_github(file_path, repo_name, github_token, target_folder, commit_message="Upload video file"):
-    """
-    Uploads a file to a specified folder in a GitHub repository.
 
-    Args:
-        file_path (Path): The path to the local file.
-        repo_name (str): The name of the GitHub repository (e.g., "username/repo").
-        github_token (str): Personal access token for GitHub.
-        target_folder (str): The folder in the GitHub repo where the file will be uploaded.
-        commit_message (str): Commit message for the upload.
-    """
+    # Uploads file to a specified folder in GitHub repository.
+
     github_api_url = f"https://api.github.com/repos/{repo_name}/contents/{target_folder}/{file_path.name}"
 
     with open(file_path, "rb") as file:
@@ -53,18 +45,8 @@ def upload_to_github(file_path, repo_name, github_token, target_folder, commit_m
         logging.error(f"Failed to upload {file_path.name} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
 
 def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = 'data/train_gen_vids', repo_name: str = '', target_folder: str = '', github_token: str = ''):
-    """
-    Retrieves new data using URLs in the table, saves them locally in folders based on emotion, and uploads them to a GitHub repository.
 
-    Args:
-        supabase (Client): Supabase client instance.
-        table_name (str): Name of the table to query.
-        data_dir (str): Base directory to store training videos.
-        repo_name (str): GitHub repository name (e.g., "username/repo").
-        target_folder (str): Folder path in the GitHub repo.
-        github_token (str): Personal access token for GitHub.
-    """
-    # Fetch all records to process
+    # Retrieves new data using URL
     response = supabase.table(table_name).select('*').execute()
 
     if not response or not hasattr(response, 'data') or response.data is None:
@@ -137,8 +119,8 @@ if __name__ == '__main__':
     SUPABASE_URL = os.getenv('SUPABASE_URL')
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
     MY_TOKEN = os.getenv('MY_TOKEN')
-    GITHUB_REPO = 'zh3nru/model_CI'  # Replace with your GitHub repo name
-    TARGET_FOLDER = 'data/train_gen_vids'  # The folder path in your GitHub repo where files will be uploaded
+    GITHUB_REPO = 'zh3nru/model_CI' 
+    TARGET_FOLDER = 'data/train_gen_vids' 
 
     if not SUPABASE_URL or not SUPABASE_KEY or not MY_TOKEN:
         logging.critical("Supabase credentials or GitHub token not found in environment variables.")

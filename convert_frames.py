@@ -10,9 +10,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Constants
 GITHUB_API_URL = "https://api.github.com"
-GITHUB_REPO = "zh3nru/model_CI"  # Replace with your repository in "username/repo" format
-GITHUB_BRANCH = "main"  # Replace with your target branch name
-MY_TOKEN = os.getenv('MY_TOKEN')  # Ensure you set this environment variable
+GITHUB_REPO = "zh3nru/model_CI"  
+GITHUB_BRANCH = "main"  
+MY_TOKEN = os.getenv('MY_TOKEN')  
 
 def upload_to_github(file_path, github_path):
     try:
@@ -25,7 +25,7 @@ def upload_to_github(file_path, github_path):
 
         encoded_content = base64.b64encode(content).decode('utf-8')
 
-        # Adjust the API URL to reflect the correct path
+        # GitHub API URL
         api_url = f"{GITHUB_API_URL}/repos/{GITHUB_REPO}/contents/{github_path}"
         headers = {
             "Authorization": f"token {MY_TOKEN}",
@@ -96,10 +96,8 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
                     if cv2.imwrite(str(frame_filepath), frame):
                         extracted_frames += 1
 
-                        # Construct the github_path to match "data/train_gen_frames/Sadness/video_1.jpg"
                         github_path = f"data/train_gen_frames/{output_directory.name}/{frame_filename}"
-                        
-                        # Upload frame to GitHub using the full path
+
                         if not upload_to_github(frame_filepath, github_path):
                             logging.error(f"Failed to upload frame {frame_filename} to GitHub.")
                     else:
@@ -140,11 +138,10 @@ if __name__ == '__main__':
     frames_data_path.mkdir(parents=True, exist_ok=True)
     logging.info(f"Frames data directory set to: {frames_data_path}")
 
-    # Modified part: Scan each subfolder in the joint_data_path
     for emotion_subfolder in joint_data_path.iterdir():
         if emotion_subfolder.is_dir():
             emotion_name = emotion_subfolder.name
             for video_file in emotion_subfolder.glob('*.mp4'):  
-                output_directory = frames_data_path / emotion_name  # Ensure frames are saved in the emotion-specific folder
+                output_directory = frames_data_path / emotion_name  #Frames to be saved in specified folder
                 output_directory.mkdir(parents=True, exist_ok=True)
                 convert_frames(video_file, output_directory, frames_per_second=frames_ps)

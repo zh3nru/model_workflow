@@ -25,33 +25,26 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Define emotion categories
 emotions = ["Aversion", "Anger", "Happiness", "Fear", "Sadness", "Surprise", "Peace"]
 
-# Set paths using environment variables or default values
 train_data_path = Path(os.getenv('train_data_path', 'data/train_gen_frames'))
 val_data_path = Path(os.getenv('val_data_path', 'data/train_gen_frames'))
 updated_model_path = Path(os.getenv('updated_model_path', 'data/models'))
 
-# Ensure the model directory exists
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
-# Define paths for existing and updated models
-existing_model_file = Path(os.getenv('existing_model_file', 'eMotion.h5'))
+existing_model_file = os.getenv('existing_model_file', 'eMotion.h5')
 existing_model_path = updated_model_path / existing_model_file
 
-# Define the path for the updated model
-updated_model_file = Path(os.getenv('updated_model_file', 'updated_model.keras'))
+updated_model_file = 'updated_model.keras'
 updated_model_save_path = updated_model_path / updated_model_file
 
-# Initialize ImageDataGenerators for training and validation
 train_data_aug = ImageDataGenerator(
     rescale=1./255,
     horizontal_flip=True,
-    rotation_range=10,  # Changed from 0.1 to 10 degrees for rotation
+    rotation_range=10, 
     zoom_range=0.1,
     validation_split=0.2
 )
@@ -102,12 +95,10 @@ try:
         logging.error(f"Existing model file not found at {existing_model_path}")
         sys.exit(1)
 
-    # Optional: Print model summary
     emotion_model.summary()
 
-    # Compile the model (necessary if you changed trainable layers)
     emotion_model.compile(
-        optimizer=Adam(learning_rate=1e-4),  # You can adjust the learning rate
+        optimizer=Adam(learning_rate=1e-4), 
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )

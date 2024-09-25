@@ -3,7 +3,7 @@ name: Hybrid Model Training
 on:
   schedule:
     - cron: '0 0 * * *' # Every midnight UTC time zone
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch: # Manual trigger
 
 concurrency:
   group: train-model
