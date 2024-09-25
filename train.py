@@ -44,7 +44,7 @@ existing_model_file = Path(os.getenv('existing_model_file', 'eMotion.h5'))
 existing_model_path = updated_model_path / existing_model_file
 
 # Define the path for the updated model
-updated_model_file = Path(os.getenv('updated_model_file', 'updated_model.h5'))
+updated_model_file = Path(os.getenv('updated_model_file', 'updated_model.keras'))
 updated_model_save_path = updated_model_path / updated_model_file
 
 # Initialize ImageDataGenerators for training and validation
