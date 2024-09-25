@@ -25,6 +25,7 @@ def upload_to_github(file_path, github_path):
 
         encoded_content = base64.b64encode(content).decode('utf-8')
 
+        # Adjust the API URL to reflect the correct path
         api_url = f"{GITHUB_API_URL}/repos/{GITHUB_REPO}/contents/{github_path}"
         headers = {
             "Authorization": f"token {MY_TOKEN}",
@@ -38,7 +39,7 @@ def upload_to_github(file_path, github_path):
             sha = None
 
         data = {
-            "message": f"Upload frames",
+            "message": "Upload frame",
             "content": encoded_content,
             "branch": GITHUB_BRANCH,
         }
@@ -94,7 +95,11 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
 
                     if cv2.imwrite(str(frame_filepath), frame):
                         extracted_frames += 1
-                        github_path = f"{output_dir.name}/{frame_filename}"
+
+                        # Construct the github_path to match "data/train_gen_frames/Sadness/video_1.jpg"
+                        github_path = f"data/train_gen_frames/{output_directory.name}/{frame_filename}"
+                        
+                        # Upload frame to GitHub using the full path
                         if not upload_to_github(frame_filepath, github_path):
                             logging.error(f"Failed to upload frame {frame_filename} to GitHub.")
                     else:
