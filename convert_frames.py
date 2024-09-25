@@ -16,6 +16,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         max_frames (int): Maximum number of frames to extract from the video.
     """
     try:
+        output_dir = output_dir.resolve()  # Ensure absolute path
         if not output_dir.exists():
             output_dir.mkdir(parents=True, exist_ok=True)
             logging.info(f"Created output directory: {output_dir}")
@@ -60,6 +61,17 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
                 # Attempt to save the frame
                 if cv2.imwrite(str(frame_filepath), frame):
                     logging.info(f"Saved frame {extracted_frames + 1} as {frame_filename}")
+                    
+                    # Verify if the image has been saved
+                    if frame_filepath.exists():
+                        img_test = cv2.imread(str(frame_filepath))
+                        if img_test is not None:
+                            logging.info(f"Verified saved frame {extracted_frames + 1} at {frame_filepath}")
+                        else:
+                            logging.error(f"Unable to read back saved frame {extracted_frames + 1} from {frame_filepath}")
+                    else:
+                        logging.error(f"Frame file {frame_filepath} does not exist after attempting to save.")
+                    
                     extracted_frames += 1
                 else:
                     logging.error(f"Failed to save frame {extracted_frames + 1} as {frame_filename}")
@@ -85,8 +97,8 @@ def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_
         frames_per_second (int): Number of frames to extract per second of video.
         max_frames (int): Maximum number of frames to extract per video.
     """
-    joint_data_path = Path(vids_data_dir)
-    frames_data_path = Path(frames_data_dir)
+    joint_data_path = Path(vids_data_dir).resolve()
+    frames_data_path = Path(frames_data_dir).resolve()
 
     if not joint_data_path.exists():
         logging.critical(f"Video data directory does not exist: {joint_data_path}")
@@ -133,9 +145,9 @@ def setup_logging():
 if __name__ == '__main__':
     setup_logging()
 
-    # Retrieve environment variables or use default paths
-    vids_dir = os.getenv('train_data_path', 'data/train_gen_vids')
-    frames_dir = 'data/train_gen_frames'  # Fixed directory as per requirement
+    # Retrieve environment variables or use absolute paths
+    vids_dir = os.getenv('train_data_path', os.path.abspath('data/train_gen_vids'))
+    frames_dir = os.path.abspath('data/train_gen_frames')  # Using absolute path
     frames_ps = 1  # Adjust as needed
     max_frames = 5  # Extract up to 5 frames per video
 
