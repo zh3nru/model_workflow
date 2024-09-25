@@ -87,12 +87,12 @@ def process_videos_in_parallel(video_files, frames_data_path, frames_per_second)
             except Exception as exc:
                 logging.error(f"Video {video_file} generated an exception: {exc}")
 
-def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_data_dir: str = 'data/train_gen_frames', frames_per_second: int = 1):
+def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_data_dir: str = 'train_gen_frames', frames_per_second: int = 1):
     """
-    Converts all videos in the joint_data_dir into image frames stored in frames_data_dir.
+    Converts all videos in the vids_data_dir into image frames stored in frames_data_dir.
 
     Args:
-        joint_data_dir (str): Directory containing videos organized by emotion.
+        vids_data_dir (str): Directory containing videos organized by emotion.
         frames_data_dir (str): Directory where frames will be stored organized by emotion.
         frames_per_second (int): Number of frames to extract per second of video.
     """
@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
     # Retrieve environment variables or use default paths
     vids_dir = os.getenv('train_data_path', 'data/train_gen_vids')
-    frames_dir = 'data/train_gen_frames'  # Fixed directory as per requirement
+    frames_dir = 'train_gen_frames'  # Fixed directory as per requirement
     frames_ps = 1  # Adjust as needed
 
     convert_videos_to_frames(vids_data_dir=vids_dir, frames_data_dir=frames_dir, frames_per_second=frames_ps)
