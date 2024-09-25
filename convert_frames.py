@@ -1,9 +1,23 @@
 import os
 import cv2
+import base64
 from pathlib import Path
 from tqdm import tqdm
 import logging
 import sys
+
+def image_to_base64(image_path: Path) -> str:
+    """
+    Converts an image file to a base64 string.
+
+    Args:
+        image_path (Path): Path to the image file.
+    
+    Returns:
+        str: Base64 string representation of the image.
+    """
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode('utf-8')
 
 def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 1, max_frames: int = 5):
     """
@@ -62,15 +76,9 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
                 if cv2.imwrite(str(frame_filepath), frame):
                     logging.info(f"Saved frame {extracted_frames + 1} as {frame_filename}")
                     
-                    # Verify if the image has been saved
-                    if frame_filepath.exists():
-                        img_test = cv2.imread(str(frame_filepath))
-                        if img_test is not None:
-                            logging.info(f"Verified saved frame {extracted_frames + 1} at {frame_filepath}")
-                        else:
-                            logging.error(f"Unable to read back saved frame {extracted_frames + 1} from {frame_filepath}")
-                    else:
-                        logging.error(f"Frame file {frame_filepath} does not exist after attempting to save.")
+                    # Convert saved frame to base64 and log
+                    image_base64 = image_to_base64(frame_filepath)
+                    logging.info(f"Extracted frame {extracted_frames + 1} (base64): {image_base64[:100]}...")  # Logging first 100 characters for brevity
                     
                     extracted_frames += 1
                 else:
@@ -125,7 +133,7 @@ def convert_videos_to_frames(vids_data_dir: str = 'data/train_gen_vids', frames_
                         logging.info(f"Frames already exist for video {video_file.name}. Skipping extraction.")
                         continue
 
-                    # Save frames directly in the emotion directory
+                    # Extract frames to the target emotion directory
                     convert_frames(video_file, target_frames_dir, frames_per_second=frames_per_second, max_frames=max_frames)
                 else:
                     logging.warning(f"Unsupported or non-file item skipped: {video_file}")
