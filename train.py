@@ -40,7 +40,7 @@ updated_model_path = Path(os.getenv('updated_model_path', 'data/models'))
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
 # Define paths for existing and updated models
-existing_model_file = Path(os.getenv('existing_model_file', 'eNotion.h5'))
+existing_model_file = Path(os.getenv('existing_model_file', 'eMotion.h5'))
 existing_model_path = updated_model_path / existing_model_file
 
 # Define the path for the updated model
