@@ -15,13 +15,6 @@ GITHUB_BRANCH = "main"  # Replace with your target branch name
 MY_TOKEN = os.getenv('MY_TOKEN')  # Ensure you set this environment variable
 
 def upload_to_github(file_path, github_path):
-    """
-    Upload a file to GitHub using the GitHub API.
-
-    Args:
-        file_path (Path): Local file path.
-        github_path (str): Target file path in the GitHub repository.
-    """
     try:
         if not MY_TOKEN:
             logging.error("GitHub token is not set. Please set the MY_TOKEN environment variable.")
@@ -30,33 +23,28 @@ def upload_to_github(file_path, github_path):
         with open(file_path, 'rb') as f:
             content = f.read()
 
-        # Base64 encode the file content
         encoded_content = base64.b64encode(content).decode('utf-8')
 
-        # Prepare the GitHub API URL
         api_url = f"{GITHUB_API_URL}/repos/{GITHUB_REPO}/contents/{github_path}"
         headers = {
             "Authorization": f"token {MY_TOKEN}",
             "Content-Type": "application/json",
         }
 
-        # Check if the file already exists on GitHub
         response = requests.get(api_url, headers=headers)
         if response.status_code == 200:
             sha = response.json()["sha"]
         else:
             sha = None
 
-        # Prepare data for uploading the file
         data = {
-            "message": f"Upload frame {file_path.name}",
+            "message": f"Upload frames",
             "content": encoded_content,
             "branch": GITHUB_BRANCH,
         }
         if sha:
             data["sha"] = sha
 
-        # Upload the file to GitHub
         response = requests.put(api_url, json=data, headers=headers)
 
         if response.status_code in [200, 201]:
@@ -71,16 +59,8 @@ def upload_to_github(file_path, github_path):
         return False
 
 def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 1):
-    """
-    Extract frames from a video and upload them to GitHub.
-
-    Args:
-        video_path (Path): Path to the video file.
-        output_dir (Path): Directory where extracted frames will be saved locally.
-        frames_per_second (int): Number of frames to extract per second of video.
-    """
     try:
-        output_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True) 
 
         vidcap = cv2.VideoCapture(str(video_path))
         if not vidcap.isOpened():
@@ -89,7 +69,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
 
         fps = vidcap.get(cv2.CAP_PROP_FPS)
         if fps == 0:
-            fps = 25  # Default FPS if unable to get from video
+            fps = 25  
             logging.warning(f"FPS not detected for {video_path}. Using default FPS={fps}")
 
         frame_interval = int(fps / frames_per_second)
@@ -112,10 +92,8 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
                     frame_filename = f"{video_path.stem}_frame{extracted_frames + 1}.jpg"
                     frame_filepath = output_dir / frame_filename
 
-                    # Save the frame locally
                     if cv2.imwrite(str(frame_filepath), frame):
                         extracted_frames += 1
-                        # Upload the frame to GitHub
                         github_path = f"{output_dir.name}/{frame_filename}"
                         if not upload_to_github(frame_filepath, github_path):
                             logging.error(f"Failed to upload frame {frame_filename} to GitHub.")
@@ -132,11 +110,8 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         logging.error(f"Error processing video {video_path}: {e}")
 
 def setup_logging():
-    """
-    Sets up the logging configuration.
-    """
     logging.basicConfig(
-        level=logging.DEBUG,  # Change to DEBUG level for detailed output
+        level=logging.DEBUG,  
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout)
@@ -146,15 +121,13 @@ def setup_logging():
 if __name__ == '__main__':
     setup_logging()
 
-    # Set the directories and parameters
     vids_dir = 'data/train_gen_vids'
     frames_dir = 'data/train_gen_frames'
-    frames_ps = 1  # Adjust as needed
+    frames_ps = 1  
 
     joint_data_path = Path(vids_dir)
     frames_data_path = Path(frames_dir)
 
-    # Ensure the directory exists
     if not joint_data_path.exists():
         logging.critical(f"Video data directory does not exist: {joint_data_path}")
         sys.exit(1)
@@ -162,7 +135,10 @@ if __name__ == '__main__':
     frames_data_path.mkdir(parents=True, exist_ok=True)
     logging.info(f"Frames data directory set to: {frames_data_path}")
 
-    # Process each video in the directory
-    for video_file in joint_data_path.glob('*.mp4'):  # Change the pattern based on your video formats
-        output_directory = frames_data_path / video_file.stem
-        convert_frames(video_file, output_directory, frames_per_second=frames_ps)
+    # Modified part: Scan each subfolder in the joint_data_path
+    for emotion_subfolder in joint_data_path.iterdir():
+        if emotion_subfolder.is_dir():
+            for video_file in emotion_subfolder.glob('*.mp4'):  
+                output_directory = frames_data_path / emotion_subfolder.name
+                output_directory.mkdir(parents=True, exist_ok=True)
+                convert_frames(video_file, output_directory, frames_per_second=frames_ps)
