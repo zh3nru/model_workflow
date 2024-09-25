@@ -52,7 +52,7 @@ train_data_aug = ImageDataGenerator(
 validation_data_aug = ImageDataGenerator(rescale=1./255)
 
 try:
-    # Load training data
+    # Load the training data
     train_data = train_data_aug.flow_from_directory(
         str(train_data_path),
         target_size=(64, 64),
