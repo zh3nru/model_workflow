@@ -52,8 +52,8 @@ def check_data_presence(supabase: Client, table_name: str, columns: list):
             response = (
                 supabase.table(table_name)
                 .select(column)
-                .filter(column, 'is', 'not.null')
-                .filter(column, 'neq', '')  # Exclude empty strings
+                .not_(column, 'is', 'null')  # Corrected line
+                .filter(column, 'neq', '')    # Exclude empty strings
                 .limit(1)
                 .execute()
             )
