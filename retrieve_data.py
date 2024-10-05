@@ -67,7 +67,7 @@ def save_processed_id(file_path, record_id):
 
 def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = 'data/train_gen_vids',
                  repo_name: str = '', target_folder: str = '', github_token: str = '',
-                 processed_ids_file: str = 'processed_ids.txt'):
+                 processed_ids_file: str = 'flag.txt'):
     """
     Retrieves new data from Supabase, downloads videos, organizes them, uploads to GitHub,
     and records processed IDs to avoid reprocessing in future runs.
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     MY_TOKEN = os.getenv('MY_TOKEN')
     GITHUB_REPO = 'zh3nru/model_CI'
     TARGET_FOLDER = 'data/train_gen_vids'
-    PROCESSED_IDS_FILE = 'processed_ids.txt'  # Define the path to the processed IDs file
+    PROCESSED_IDS_FILE = 'flag.txt'  
 
     if not SUPABASE_URL or not SUPABASE_KEY or not MY_TOKEN:
         logging.critical("Supabase credentials or GitHub token not found in environment variables.")
