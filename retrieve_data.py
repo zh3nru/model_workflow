@@ -67,10 +67,12 @@ def save_processed_id(file_path, record_id):
 
 def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: str = 'data/train_gen_vids',
                  repo_name: str = '', target_folder: str = '', github_token: str = '',
-                 processed_ids_file: str = 'flag.txt'):
+                 processed_ids_file: str = 'processed_ids.txt'):
     """
     Retrieves new data from Supabase, downloads videos, organizes them, uploads to GitHub,
     and records processed IDs to avoid reprocessing in future runs.
+    
+    Sets an output variable 'NEW_DATA_PROCESSED' to 'true' if any new data was processed.
     """
     # Load already processed IDs
     processed_ids = load_processed_ids(processed_ids_file)
@@ -80,20 +82,20 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
 
     if not response or not hasattr(response, 'data') or response.data is None:
         logging.error(f"Error retrieving data from the table. Response received: {response}")
-        return
+        return False  # No new data processed
 
     data = response.data
 
     if not data:
         logging.info("No data retrieved from the database.")
-        return
+        return False  # No new data processed
 
     new_records = [record for record in data if str(record.get('id')) not in processed_ids]
     logging.info(f"Found {len(new_records)} new records to process out of {len(data)} total records.")
 
     if not new_records:
         logging.info("No new records to process.")
-        return
+        return False  # No new data processed
 
     for record in tqdm(new_records, desc="Retrieving Data"):
         record_id = record.get('id')
@@ -161,6 +163,9 @@ def retrieve_data(supabase: Client, table_name: str = 'videos_data', data_dir: s
         # After successful processing (download and upload), save the record ID
         save_processed_id(processed_ids_file, record_id)
 
+    # If the function reaches here, new data was processed
+    return True
+
 if __name__ == '__main__':
     SUPABASE_URL = os.getenv('SUPABASE_URL')
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
@@ -175,7 +180,8 @@ if __name__ == '__main__':
 
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    retrieve_data(
+    # Run the data retrieval process
+    new_data_processed = retrieve_data(
         supabase,
         table_name='videos_data',
         data_dir='data/train_gen_vids',
@@ -184,3 +190,10 @@ if __name__ == '__main__':
         github_token=MY_TOKEN,
         processed_ids_file=PROCESSED_IDS_FILE
     )
+
+    # Set GitHub Actions output using the new method
+    if 'GITHUB_OUTPUT' in os.environ:
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as gh_output:
+            gh_output.write(f'NEW_DATA_PROCESSED={str(new_data_processed).lower()}\n')
+    else:
+        logging.warning("GITHUB_OUTPUT environment variable not found. Cannot set output variable.")

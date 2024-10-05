@@ -47,24 +47,24 @@ jobs:
         run: |
           python check_new_data.py
         
-
       - name: Retrieve New Videos
-        if: steps.check_data.outputs.NEW_DATA == 'true'
+        id: retrieve_data
+        if: steps.check_data.outputs.DATA_PRESENT == 'true'
         run: |
           python retrieve_data.py
 
       - name: Convert Videos to Frames
-        if: steps.check_data.outputs.NEW_DATA == 'true'
+        if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED == 'true'
         run: |
           python convert_frames.py
 
       - name: Train the Model
-        if: steps.check_data.outputs.NEW_DATA == 'true'
+        if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED == 'true'
         run: |
           python train.py
 
-      - name: No New Data - Skip Training
-        if: steps.check_data.outputs.NEW_DATA != 'true'
-        run: echo "No new data found. Skipping training."
+      - name: No New Data Processed - Skip Training
+        if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED != 'true'
+        run: echo "No new data processed. Skipping training."
 
     timeout-minutes: 60

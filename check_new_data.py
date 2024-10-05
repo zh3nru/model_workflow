@@ -83,12 +83,14 @@ def check_data_presence(supabase: Client, table_name: str = 'videos_data'):
         data_present = emotion_exists and video_exists
         logging.info(f"Overall data presence (both columns have data): {data_present}")
 
-        # Set GitHub Actions output
-        print(f"::set-output name=DATA_PRESENT::{str(data_present).lower()}")
+        # Set GitHub Actions output using the new method
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as gh_output:
+            gh_output.write(f'DATA_PRESENT={str(data_present).lower()}\n')
 
     except Exception as e:
         logging.error(f"An error occurred while querying Supabase: {e}")
         raise
+
 
 def main():
     """
