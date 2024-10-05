@@ -16,9 +16,9 @@ def setup_logging():
     )
 
 def get_supabase_client() -> Client:
-
-    # Retrieves Supabase credentials and creates Supabase client
-
+    """
+    Retrieves Supabase credentials from environment variables and creates a Supabase client.
+    """
     SUPABASE_URL = os.getenv('SUPABASE_URL')
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
@@ -34,37 +34,45 @@ def get_supabase_client() -> Client:
         logging.critical(f"Failed to create Supabase client: {e}")
         raise
 
-def check_new_data(supabase: Client, table_name: str = 'videos_data'):
+def check_data_presence(supabase: Client, table_name: str, columns: list):
+    """
+    Checks if there is any data present in each specified column of the given table.
     
-    # Check data.
-    logging.info(f"Checking for data presence in table '{table_name}' for 'emotion_class' and 'video_path' columns...")
+    Args:
+        supabase (Client): The Supabase client.
+        table_name (str): The name of the table to check.
+        columns (list): A list of column names to verify data presence.
+    """
+    logging.info(f"Checking data presence in table '{table_name}' for columns: {', '.join(columns)}.")
 
+    results = {}
     try:
-        # Query Supabase for records
-        response = (
-            supabase.table(table_name)
-            .select('id')
-            .filter('emotion_class', 'neq', None)  
-            .filter('video_path', 'neq', None)     
-            .filter('emotion_class', 'neq', '')    
-            .filter('video_path', 'neq', '')       
-            .limit(1)
-            .execute()
-        )
+        for column in columns:
+            logging.info(f"Checking column '{column}' for data presence...")
+            response = (
+                supabase.table(table_name)
+                .select(column)
+                .filter(column, 'is', 'not.null')
+                .filter(column, 'neq', '')  # Exclude empty strings
+                .limit(1)
+                .execute()
+            )
 
-        data_exists = len(response.data) > 0
-        logging.info(f"Data exists: {data_exists}")
+            data_exists = len(response.data) > 0
+            results[column] = data_exists
+            logging.info(f"Data exists in column '{column}': {data_exists}")
 
-        print(f"::set-output name=NEW_DATA::{str(data_exists).lower()}")
+        # Optionally, aggregate results to determine if all columns have data
+        all_data_present = all(results.values())
+        logging.info(f"All specified columns have data: {all_data_present}")
 
     except Exception as e:
         logging.error(f"An error occurred while querying Supabase: {e}")
         raise
 
 def main():
-   
     setup_logging()
-    logging.info("Starting the new data check process.")
+    logging.info("Starting the data presence check process.")
 
     try:
         # Create a Supabase client
@@ -74,12 +82,16 @@ def main():
         sys.exit(1)
 
     try:
-        check_new_data(supabase, table_name='videos_data')  
+        # Specify the table and columns you want to check
+        table_name = 'videos_data'
+        columns_to_check = ['emotion_class', 'video_path']  # Add more columns as needed
+
+        check_data_presence(supabase, table_name, columns_to_check)
     except Exception as e:
-        logging.critical(f"Failed to check new data: {e}")
+        logging.critical(f"Failed to check data presence: {e}")
         sys.exit(1)
 
-    logging.info("New data check process completed successfully.")
+    logging.info("Data presence check process completed successfully.")
 
 if __name__ == '__main__':
     main()
