@@ -10,4 +10,5 @@ tqdm>=4.64.0
 numpy>=1.21.0
 requests>=2.25.1
 supabase
+h5py
 

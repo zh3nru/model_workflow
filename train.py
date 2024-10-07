@@ -28,6 +28,7 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import requests
+import h5py
 
 logging.basicConfig(
     level=logging.INFO,
@@ -117,8 +118,8 @@ existing_model_path = updated_model_path / existing_model_file
 # Get current date string
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
-# Define updated model filenames with date
-updated_model_file = f'updated_model_{current_date}.h5'
+# Define updated model filenames with date and correct extension
+updated_model_file = f'updated_model_{current_date}.h5'  # Changed from .keras to .h5
 updated_model_save_path = updated_model_path / updated_model_file
 
 # Define TFLite model filename with date and .tflite extension
@@ -222,8 +223,8 @@ try:
         f.write(tflite_model)
     logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
 
-    # Save the updated Keras model
-    emotion_model.save(str(updated_model_save_path))
+    # Save the updated Keras model with .h5 extension and explicit format
+    emotion_model.save(str(updated_model_save_path), save_format='h5')  # Specify save_format='h5'
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
     def upload_models():
@@ -231,7 +232,7 @@ try:
         Uploads the saved model files to the specified GitHub repository.
         """
         models_to_upload = {
-            'h5': h5_model_path,
+            'h5': h5_model_path,            # Remain as 'h5'
             'tflite': tflite_model_save_path
         }
 
