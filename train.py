@@ -41,9 +41,9 @@ logging.basicConfig(
 GITHUB_API_URL = "https://api.github.com"
 GITHUB_REPO = 'zh3nru/model_CI'  # Repository in the format 'owner/repo'
 GITHUB_MODEL_PATH = 'data/models'  # Path within the repository to save models
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # GitHub Personal Access Token
+MY_TOKEN = os.getenv('MY_TOKEN')
 
-if not GITHUB_TOKEN:
+if not MY_TOKEN:
     logging.critical("GitHub token not found in environment variables. Please set 'GITHUB_TOKEN'.")
     sys.exit(1)
 
@@ -237,7 +237,7 @@ try:
                     repo_name=GITHUB_REPO,
                     file_path=github_file_path,
                     file_content=file_content,
-                    github_token=GITHUB_TOKEN,
+                    github_token=MY_TOKEN,
                     commit_message=commit_msg
                 )
                 if success:
