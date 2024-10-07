@@ -29,8 +29,6 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import requests
 
-import tensorflow_model_optimization as tfmot  
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -51,7 +49,58 @@ if not MY_TOKEN:
     logging.critical("GitHub token not found in environment variables. Please set 'MY_TOKEN'.")
     sys.exit(1)
 
-# [Existing functions: get_github_file, upload_file_to_github]
+def get_github_file(repo_name, file_path, github_token):
+    """
+    Retrieves the content and SHA of a file from a GitHub repository.
+    """
+    url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        file_info = response.json()
+        content = file_info['content']
+        sha = file_info['sha']
+        logging.info(f"Successfully fetched {file_path} from {repo_name}.")
+        return content, sha
+    else:
+        logging.error(f"Failed to fetch {file_path} from GitHub. Status code: {response.status_code}. Response: {response.json()}")
+        return None, None
+
+def upload_file_to_github(repo_name, file_path, file_content, github_token, commit_message="Upload model file"):
+    """
+    Uploads or updates a file in a GitHub repository.
+    """
+    url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Check if the file already exists to get its SHA
+    existing_content, existing_sha = get_github_file(repo_name, file_path, github_token)
+
+    data = {
+        "message": commit_message,
+        "content": b64encode(file_content).decode('utf-8'),
+        "branch": "main"  # Adjust if you're using a different branch
+    }
+
+    if existing_sha:
+        data["sha"] = existing_sha
+
+    response = requests.put(url, headers=headers, data=json.dumps(data))
+
+    if response.status_code in [200, 201]:
+        action = "Updated" if existing_sha else "Created"
+        logging.info(f"{action} {file_path} in {repo_name} successfully.")
+        return True
+    else:
+        logging.error(f"Failed to upload {file_path} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
+        return False
 
 # Define emotions
 emotions = ["Aversion", "Anger", "Happiness", "Fear", "Sadness", "Surprise", "Peace"]
@@ -65,14 +114,14 @@ updated_model_path = Path(os.getenv('UPDATED_MODEL_PATH', 'data/models'))
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
 # Change the default existing model file to use .keras extension
-existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')  # Changed from 'eMotion.h5' to 'eMotion.keras'
+existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')  
 existing_model_path = updated_model_path / existing_model_file
 
 # Get current date string
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
 # Define updated model filenames with date and .keras extension
-updated_model_file = f'updated_model_{current_date}.keras'  # Changed from .h5 to .keras
+updated_model_file = f'updated_model_{current_date}.keras' 
 updated_model_save_path = updated_model_path / updated_model_file
 
 # Define TFLite model filename with date and .tflite extension
@@ -164,62 +213,33 @@ try:
         callbacks=[early_stopping, checkpoint]
     )
 
-    # Apply post-training quantization to the Keras model
-    def apply_quantization_to_keras_model(model):
-        """
-        Applies post-training quantization to a Keras model.
-
-        Args:
-            model (tf.keras.Model): The original Keras model.
-
-        Returns:
-            tf.keras.Model: The quantized Keras model.
-        """
-        # Apply quantization
-        quantized_model = tfmot.quantization.keras.quantize_model(model)
-
-        # Compile the quantized model
-        quantized_model.compile(
-            optimizer=Adam(learning_rate=1e-4),
-            loss='categorical_crossentropy',
-            metrics=['accuracy']
-        )
-
-        return quantized_model
-
-    # Apply quantization
-    quantized_emotion_model = apply_quantization_to_keras_model(emotion_model)
-
-    # Fine-tune the quantized model (optional but recommended)
-    logging.info("Starting fine-tuning of the quantized model.")
-    history_quantized = quantized_emotion_model.fit(
-        train_data,
-        steps_per_epoch=train_data.samples // train_data.batch_size,
-        epochs=5,  # Adjust the number of epochs as needed
-        validation_data=val_data,
-        validation_steps=val_data.samples // val_data.batch_size,
-        callbacks=[early_stopping, checkpoint]
-    )
-    logging.info("Fine-tuning of the quantized model completed.")
-
-    # Save the quantized Keras model
-    quantized_model_file = f'quantized_model_{current_date}.keras'
-    quantized_model_save_path = updated_model_path / quantized_model_file
-    quantized_emotion_model.save(str(quantized_model_save_path), save_format='tf')
-    logging.info(f"Quantized Keras model saved to {quantized_model_save_path}")
-
     # Convert Keras model to TensorFlow Lite model
     converter = tf.lite.TFLiteConverter.from_keras_model(emotion_model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     tflite_model = converter.convert()
+
+    # Define paths with appropriate extensions
+    # h5_model_path = updated_model_save_path  # Removed as we're not using .h5
+    tflite_model_path = updated_model_save_path.with_suffix('.tflite')  # Already defined above
 
     # Save the converted TensorFlow Lite model
     with open(tflite_model_save_path, 'wb') as f:
         f.write(tflite_model)
     logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
 
-    # Save the updated Keras model with .keras extension and explicit format
-    emotion_model.save(str(updated_model_save_path), save_format='tf')  # Changed save_format to 'tf'
+    for layer in emotion_model.layers:
+        if hasattr(layer, 'get_weights') and hasattr(layer, 'set_weights'):
+            weights = layer.get_weights()
+            if weights:
+                weights = [w.astype('float16') for w in weights]
+                layer.set_weights(weights)
+
+    # Save the updated Keras model with .keras extension and exclude optimizer state
+    emotion_model.save(
+        str(updated_model_save_path),
+        save_format='keras',
+        include_optimizer=False
+    )
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
     def upload_models():
@@ -227,8 +247,7 @@ try:
         Uploads the saved model files to the specified GitHub repository.
         """
         models_to_upload = {
-            'keras': updated_model_save_path,
-            'quantized_keras': quantized_model_save_path,  # Add quantized model
+            'keras': updated_model_save_path,           
             'tflite': tflite_model_save_path
         }
 
