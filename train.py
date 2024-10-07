@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 import sys
 import logging
+import requests
+import base64
+from dotenv import load_dotenv
 
 import numpy as np
 import pandas as pd 
@@ -25,22 +28,44 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Load environment variables from a .env file if present
+load_dotenv()
 
+# GitHub Configuration
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+GITHUB_REPO = os.getenv('GITHUB_REPO', 'zh3nru/model_CI')
+GITHUB_BRANCH = os.getenv('GITHUB_BRANCH', 'main')
+GITHUB_TARGET_FOLDER = os.getenv('GITHUB_TARGET_FOLDER', 'data/models')
+
+# Logging Configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("training.log"),
+        logging.StreamHandler()
+    ]
+)
+
+# Emotion Categories
 emotions = ["Aversion", "Anger", "Happiness", "Fear", "Sadness", "Surprise", "Peace"]
 
+# Data Paths
 train_data_path = Path(os.getenv('train_data_path', 'data/train_gen_frames'))
 val_data_path = Path(os.getenv('val_data_path', 'data/train_gen_frames'))
 updated_model_path = Path(os.getenv('updated_model_path', 'data/models'))
 
+# Ensure the models directory exists
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
+# Model File Paths
 existing_model_file = os.getenv('existing_model_file', 'eMotion.h5')
 existing_model_path = updated_model_path / existing_model_file
 
 updated_model_file = 'updated_model.keras'
 updated_model_save_path = updated_model_path / updated_model_file
 
+# Image Data Generators
 train_data_aug = ImageDataGenerator(
     rescale=1./255,
     horizontal_flip=True,
@@ -85,6 +110,62 @@ except Exception as e:
     logging.error(f"Error loading images: {e}")
     sys.exit(1)
 
+def upload_file_to_github(file_path, repo, folder, branch, github_token, commit_message):
+    """
+    Uploads or updates a file in the specified GitHub repository and folder.
+    
+    :param file_path: Path to the local file to upload.
+    :param repo: GitHub repository in the format 'owner/repo'.
+    :param folder: Target folder in the repository.
+    :param branch: Branch to commit to.
+    :param github_token: GitHub Personal Access Token.
+    :param commit_message: Commit message for the upload.
+    """
+    try:
+        with open(file_path, "rb") as file:
+            content = file.read()
+        encoded_content = base64.b64encode(content).decode('utf-8')
+        filename = os.path.basename(file_path)
+        github_api_url = f"https://api.github.com/repos/{repo}/contents/{folder}/{filename}"
+        
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Check if the file already exists to get its SHA
+        get_response = requests.get(github_api_url, headers=headers)
+        if get_response.status_code == 200:
+            sha = get_response.json()['sha']
+            logging.info(f"File {filename} exists. Updating the file.")
+        elif get_response.status_code == 404:
+            sha = None
+            logging.info(f"File {filename} does not exist. Creating a new file.")
+        else:
+            logging.error(f"Failed to check existence of {filename} on GitHub. Status code: {get_response.status_code}. Response: {get_response.json()}")
+            return False
+        
+        data = {
+            "message": commit_message,
+            "content": encoded_content,
+            "branch": branch
+        }
+        
+        if sha:
+            data["sha"] = sha
+        
+        put_response = requests.put(github_api_url, headers=headers, json=data)
+        
+        if put_response.status_code in [200, 201]:
+            logging.info(f"Successfully uploaded {filename} to GitHub repository {repo} in {folder}/.")
+            return True
+        else:
+            logging.error(f"Failed to upload {filename} to GitHub. Status code: {put_response.status_code}. Response: {put_response.json()}")
+            return False
+    except Exception as e:
+        logging.error(f"Exception occurred while uploading {file_path} to GitHub: {e}")
+        return False
+
 try:
     # Load the existing model
     if existing_model_path.exists():
@@ -124,9 +205,53 @@ try:
         callbacks=[early_stopping, checkpoint]
     )
 
-    # Save the updated model
+    # Convert Keras model to TensorFlow Lite model
+    converter = tf.lite.TFLiteConverter.from_keras_model(emotion_model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    tflite_model = converter.convert()
+
+    # Define TFLite model path
+    tflite_model_file = 'updated_model.tflite'
+    tflite_model_save_path = updated_model_path / tflite_model_file
+
+    # Save the TensorFlow Lite model locally
+    with open(tflite_model_save_path, 'wb') as f:
+        f.write(tflite_model)
+    logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
+
+    # Save the updated Keras model locally
     emotion_model.save(str(updated_model_save_path))
-    logging.info(f"Updated model saved to {updated_model_save_path}")
+    logging.info(f"Updated Keras model saved to {updated_model_save_path}")
+
+    # Upload the updated Keras model to GitHub
+    if GITHUB_TOKEN:
+        commit_msg_keras = f"Update Keras model: {updated_model_file} at {dt.datetime.now().isoformat()}"
+        success_keras = upload_file_to_github(
+            file_path=updated_model_save_path,
+            repo=GITHUB_REPO,
+            folder=GITHUB_TARGET_FOLDER,
+            branch=GITHUB_BRANCH,
+            github_token=GITHUB_TOKEN,
+            commit_message=commit_msg_keras
+        )
+        
+        # Upload the TensorFlow Lite model to GitHub
+        commit_msg_tflite = f"Update TFLite model: {tflite_model_file} at {dt.datetime.now().isoformat()}"
+        success_tflite = upload_file_to_github(
+            file_path=tflite_model_save_path,
+            repo=GITHUB_REPO,
+            folder=GITHUB_TARGET_FOLDER,
+            branch=GITHUB_BRANCH,
+            github_token=GITHUB_TOKEN,
+            commit_message=commit_msg_tflite
+        )
+        
+        if success_keras and success_tflite:
+            logging.info("Both models uploaded to GitHub successfully.")
+        else:
+            logging.error("One or both models failed to upload to GitHub.")
+    else:
+        logging.warning("GITHUB_TOKEN not found. Skipping GitHub upload.")
 
 except Exception as e:
     logging.error(f"Training failed: {e}")
