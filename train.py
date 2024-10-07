@@ -44,7 +44,7 @@ GITHUB_MODEL_PATH = 'data/models'  # Path within the repository to save models
 MY_TOKEN = os.getenv('MY_TOKEN')
 
 if not MY_TOKEN:
-    logging.critical("GitHub token not found in environment variables. Please set 'GITHUB_TOKEN'.")
+    logging.critical("GitHub token not found in environment variables. Please set 'MY_TOKEN'.")
     sys.exit(1)
 
 def get_github_file(repo_name, file_path, github_token):
@@ -114,8 +114,16 @@ updated_model_path.mkdir(parents=True, exist_ok=True)
 existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')
 existing_model_path = updated_model_path / existing_model_file
 
-updated_model_file = 'updated_model.keras'
+# Get current date string
+current_date = dt.datetime.now().strftime('%Y%m%d')
+
+# Define updated model filenames with date
+updated_model_file = f'updated_model_{current_date}.h5'
 updated_model_save_path = updated_model_path / updated_model_file
+
+# Define TFLite model filename with date and .tflite extension
+tflite_model_file = f'updated_model_{current_date}.tflite'
+tflite_model_save_path = updated_model_path / tflite_model_file
 
 train_data_aug = ImageDataGenerator(
     rescale=1./255,
@@ -205,13 +213,14 @@ try:
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     tflite_model = converter.convert()
 
-    h5_model_path = updated_model_path / 'updated_model.h5'
-    tflite_model_path = updated_model_path / 'updated_model.tflite'
+    # Define paths with appropriate extensions
+    h5_model_path = updated_model_save_path  # Already defined above
+    tflite_model_path = updated_model_save_path.with_suffix('.tflite')
 
     # Save the converted TensorFlow Lite model
-    with open(tflite_model_path, 'wb') as f:
+    with open(tflite_model_save_path, 'wb') as f:
         f.write(tflite_model)
-    logging.info(f"TensorFlow Lite model saved to {tflite_model_path}")
+    logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
 
     # Save the updated Keras model
     emotion_model.save(str(updated_model_save_path))
@@ -223,8 +232,7 @@ try:
         """
         models_to_upload = {
             'h5': h5_model_path,
-            'keras': updated_model_save_path,
-            'tflite': tflite_model_path
+            'tflite': tflite_model_save_path
         }
 
         for model_type, model_path in models_to_upload.items():
