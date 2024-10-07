@@ -119,7 +119,7 @@ updated_model_path.mkdir(parents=True, exist_ok=True)
 # === Modification Starts Here ===
 
 # Change the default existing model file to use .keras extension
-existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.keras')  # Changed from 'eMotion.h5' to 'eMotion.keras'
+existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')  # Changed from 'eMotion.h5' to 'eMotion.keras'
 existing_model_path = updated_model_path / existing_model_file
 
 # Get current date string
