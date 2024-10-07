@@ -28,8 +28,8 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import requests
-import h5py
 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -39,6 +39,7 @@ logging.basicConfig(
     ]
 )
 
+# GitHub repository details
 GITHUB_API_URL = "https://api.github.com"
 GITHUB_REPO = 'zh3nru/model_CI'  # Repository in the format 'owner/repo'
 GITHUB_MODEL_PATH = 'data/models'  # Path within the repository to save models
@@ -104,28 +105,37 @@ def upload_file_to_github(repo_name, file_path, file_content, github_token, comm
         logging.error(f"Failed to upload {file_path} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
         return False
 
+# Define emotions
 emotions = ["Aversion", "Anger", "Happiness", "Fear", "Sadness", "Surprise", "Peace"]
 
+# Paths for training and validation data
 train_data_path = Path(os.getenv('TRAIN_DATA_PATH', 'data/train_gen_frames'))
 val_data_path = Path(os.getenv('VAL_DATA_PATH', 'data/train_gen_frames'))
 updated_model_path = Path(os.getenv('UPDATED_MODEL_PATH', 'data/models'))
 
+# Create the directory if it doesn't exist
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
-existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')
+# === Modification Starts Here ===
+
+# Change the default existing model file to use .keras extension
+existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.keras')  # Changed from 'eMotion.h5' to 'eMotion.keras'
 existing_model_path = updated_model_path / existing_model_file
 
 # Get current date string
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
-# Define updated model filenames with date and correct extension
-updated_model_file = f'updated_model_{current_date}.h5'  # Changed from .keras to .h5
+# Define updated model filenames with date and .keras extension
+updated_model_file = f'updated_model_{current_date}.keras'  # Changed from .h5 to .keras
 updated_model_save_path = updated_model_path / updated_model_file
 
 # Define TFLite model filename with date and .tflite extension
 tflite_model_file = f'updated_model_{current_date}.tflite'
 tflite_model_save_path = updated_model_path / tflite_model_file
 
+# === Modification Ends Here ===
+
+# Image data generators with data augmentation for training and rescaling for validation
 train_data_aug = ImageDataGenerator(
     rescale=1./255,
     horizontal_flip=True,
@@ -182,6 +192,7 @@ try:
 
     emotion_model.summary()
 
+    # Compile the model
     emotion_model.compile(
         optimizer=Adam(learning_rate=1e-4), 
         loss='categorical_crossentropy',
@@ -215,16 +226,16 @@ try:
     tflite_model = converter.convert()
 
     # Define paths with appropriate extensions
-    h5_model_path = updated_model_save_path  # Already defined above
-    tflite_model_path = updated_model_save_path.with_suffix('.tflite')
+    # h5_model_path = updated_model_save_path  # Removed as we're not using .h5
+    tflite_model_path = updated_model_save_path.with_suffix('.tflite')  # Already defined above
 
     # Save the converted TensorFlow Lite model
     with open(tflite_model_save_path, 'wb') as f:
         f.write(tflite_model)
     logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
 
-    # Save the updated Keras model with .h5 extension and explicit format
-    emotion_model.save(str(updated_model_save_path), save_format='h5')  # Specify save_format='h5'
+    # Save the updated Keras model with .keras extension and explicit format
+    emotion_model.save(str(updated_model_save_path), save_format='tf')  # Changed save_format to 'tf'
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
     def upload_models():
@@ -232,7 +243,7 @@ try:
         Uploads the saved model files to the specified GitHub repository.
         """
         models_to_upload = {
-            'h5': h5_model_path,            # Remain as 'h5'
+            'keras': updated_model_save_path,           
             'tflite': tflite_model_save_path
         }
 
