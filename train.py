@@ -95,7 +95,7 @@ def upload_file_to_github(repo_name, file_path, file_content, github_token, comm
     response = requests.put(url, headers=headers, data=json.dumps(data))
 
     if response.status_code in [200, 201]:
-        action = "Updated" if existing_sha else "Created"
+        action = "Updated" if existing_sha else "Uploaded"
         logging.info(f"{action} {file_path} in {repo_name} successfully.")
         return True
     else:
@@ -242,19 +242,57 @@ try:
     )
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
+    # Additional repository details
+    SECOND_GITHUB_REPO = 'kai-sotto/hybrid-model'  # The second repository path
+    SECOND_GITHUB_MODEL_PATH = 'assets'  # Path within the second repository
+
+    def upload_file_to_second_github_repo(repo_name, file_path, file_content, github_token, commit_message="Upload model file to second repo"):
+        """
+        Uploads or updates a file in the second GitHub repository.
+        """
+        url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
+        headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+        }
+
+        # Check if the file already exists to get its SHA
+        existing_content, existing_sha = get_github_file(repo_name, file_path, github_token)
+
+        data = {
+            "message": commit_message,
+            "content": b64encode(file_content).decode('utf-8'),
+            "branch": "main"  # Adjust if you're using a different branch
+        }
+
+        if existing_sha:
+            data["sha"] = existing_sha
+
+        response = requests.put(url, headers=headers, data=json.dumps(data))
+
+        if response.status_code in [200, 201]:
+            action = "Updated" if existing_sha else "Uploaded"
+            logging.info(f"{action} {file_path} in {repo_name} successfully.")
+            return True
+        else:
+            logging.error(f"Failed to upload {file_path} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
+            return False
+
     def upload_models():
         """
-        Uploads the saved model files to the specified GitHub repository.
+        Uploads the saved model files to the specified GitHub repositories.
         """
         models_to_upload = {
-            'keras': updated_model_save_path,           
-            'tflite': tflite_model_save_path
+        'keras': updated_model_save_path,           
+        'tflite': tflite_model_save_path
         }
 
         for model_type, model_path in models_to_upload.items():
             if model_path.exists():
                 with open(model_path, 'rb') as file:
                     file_content = file.read()
+
+                # Upload to the first repository
                 github_file_path = f"{GITHUB_MODEL_PATH}/{model_path.name}"
                 commit_msg = f"Upload updated {model_type} model: {model_path.name}"
                 success = upload_file_to_github(
@@ -265,14 +303,30 @@ try:
                     commit_message=commit_msg
                 )
                 if success:
-                    logging.info(f"Successfully uploaded {model_path.name} to GitHub.")
+                    logging.info(f"Successfully uploaded {model_path.name} to the first GitHub repository.")
                 else:
-                    logging.error(f"Failed to upload {model_path.name} to GitHub.")
+                    logging.error(f"Failed to upload {model_path.name} to the first GitHub repository.")
+
+            # Upload to the second repository
+                second_github_file_path = f"{SECOND_GITHUB_MODEL_PATH}/{model_path.name}"
+                second_commit_msg = f"Upload updated {model_type} model to second repo: {model_path.name}"
+                success_second = upload_file_to_second_github_repo(
+                    repo_name=SECOND_GITHUB_REPO,
+                    file_path=second_github_file_path,
+                    file_content=file_content,
+                    github_token=MY_TOKEN,
+                    commit_message=second_commit_msg
+                )
+                if success_second:
+                    logging.info(f"Successfully uploaded {model_path.name} to the second GitHub repository.")
+                else:
+                    logging.error(f"Failed to upload {model_path.name} to the second GitHub repository.")
             else:
                 logging.warning(f"Model file {model_path} does not exist and cannot be uploaded.")
 
     # Call the function to upload models to GitHub
     upload_models()
+
 
 except Exception as e:
     logging.error(f"Training failed: {e}")
