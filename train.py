@@ -66,9 +66,6 @@ def get_github_file(repo_name, file_path, github_token):
         sha = file_info['sha']
         logging.info(f"Successfully fetched {file_path} from {repo_name}.")
         return content, sha
-    elif response.status_code == 404:
-        logging.info(f"{file_path} does not exist in {repo_name}. It will be created.")
-        return None, None
     else:
         logging.error(f"Failed to fetch {file_path} from GitHub. Status code: {response.status_code}. Response: {response.json()}")
         return None, None
@@ -116,24 +113,20 @@ updated_model_path = Path(os.getenv('UPDATED_MODEL_PATH', 'data/models'))
 # Create the directory if it doesn't exist
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
-# === Modification Starts Here ===
-
-# Change the default existing model file to use .keras extension
-existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')  # Changed from 'eMotion.h5' to 'eMotion.keras'
+# Change the default existing model file to use .h5 extension
+existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')
 existing_model_path = updated_model_path / existing_model_file
 
 # Get current date string
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
-# Define updated model filenames with date and .keras extension
-updated_model_file = f'updated_model_{current_date}.keras'  # Changed from .h5 to .keras
+# Define updated model filenames with date and .h5 extension
+updated_model_file = f'updated_model_{current_date}.h5'  # Changed to .h5
 updated_model_save_path = updated_model_path / updated_model_file
 
 # Define TFLite model filename with date and .tflite extension
 tflite_model_file = f'updated_model_{current_date}.tflite'
 tflite_model_save_path = updated_model_path / tflite_model_file
-
-# === Modification Ends Here ===
 
 # Image data generators with data augmentation for training and rescaling for validation
 train_data_aug = ImageDataGenerator(
@@ -220,23 +213,19 @@ try:
         callbacks=[early_stopping, checkpoint]
     )
 
-    # Convert Keras model to TensorFlow Lite model
+    # Save the updated model as an .h5 file
+    emotion_model.save(str(updated_model_save_path))
+    logging.info(f"Updated model saved to {updated_model_save_path}.")
+
+    # Convert Keras model to TensorFlow Lite model with quantization
     converter = tf.lite.TFLiteConverter.from_keras_model(emotion_model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     tflite_model = converter.convert()
-
-    # Define paths with appropriate extensions
-    # h5_model_path = updated_model_save_path  # Removed as we're not using .h5
-    tflite_model_path = updated_model_save_path.with_suffix('.tflite')  # Already defined above
 
     # Save the converted TensorFlow Lite model
     with open(tflite_model_save_path, 'wb') as f:
         f.write(tflite_model)
     logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
-
-    # Save the updated Keras model with .keras extension and explicit format
-    emotion_model.save(str(updated_model_save_path), save_format='tf')  # Changed save_format to 'tf'
-    logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
     def upload_models():
         """
@@ -273,3 +262,4 @@ try:
 except Exception as e:
     logging.error(f"Training failed: {e}")
     sys.exit(1)
+
