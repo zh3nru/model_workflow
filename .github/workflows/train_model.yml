@@ -75,7 +75,7 @@ jobs:
         if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED != 'true'
         run: echo "No new data processed. Skipping training."
 
-      - name: Commit and Push .keras Files
+      - name: Commit and Push .keras Files via Git LFS
         if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,11 +83,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Add .keras files
-          git add models/updated_model.keras  
+          # Add .keras files tracked by Git LFS
+          git add data/models/updated_model.keras  
           
           # Commit changes
-          git commit -m "Update .keras files via GitHub Actions" || echo "No changes to commit"
+          git commit -m "Update .keras model files via GitHub Actions" || echo "No changes to commit"
           
           # Push changes
           git push

@@ -64,7 +64,6 @@ def get_github_file(repo_name, file_path, github_token):
         logging.info(f"Successfully fetched {file_path} from {repo_name}.")
         return content, sha
     else:
-        logging.error(f"Failed to fetch {file_path} from GitHub rep. Status code: {response.status_code}. Response: {response.json()}")
         return None, None
 
 def upload_file_to_github(repo_name, file_path, file_content, github_token, commit_message="Upload model file"):
@@ -229,7 +228,7 @@ try:
 
     # Second repository path where tflite model will be sent
     SECOND_GITHUB_REPO = 'Kristoferseyan/fix-emotion'  
-    SECOND_GITHUB_MODEL_PATH = 'assets'  
+    SECOND_GITHUB_MODEL_PATH = 'assets/models'  
 
     def upload_file_to_second_github_repo(repo_name, file_path, file_content, github_token, commit_message="Upload model file to second repo"):
         url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
