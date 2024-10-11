@@ -112,7 +112,7 @@ existing_model_path = updated_model_path / existing_model_file
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
 # Add date to main and tflite model file name
-updated_model_file = f'updated_model_{current_date}.keras' 
+updated_model_file = f'updated_model.keras' 
 updated_model_save_path = updated_model_path / updated_model_file
 
 tflite_model_file = f'updated_model_{current_date}.tflite'
@@ -257,7 +257,6 @@ try:
             logging.info(f"{action} {file_path} in {repo_name} successfully.")
             return True
         else:
-            logging.error(f"Failed to upload {file_path} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
             return False
 
     def upload_models():
@@ -271,7 +270,7 @@ try:
                 with open(model_path, 'rb') as file:
                     file_content = file.read()
 
-                # Upload to first repository
+                # Upload main model to first repository
                 github_file_path = f"{GITHUB_MODEL_PATH}/{model_path.name}"
                 commit_msg = f"Upload updated {model_type} model: {model_path.name}"
                 success = upload_file_to_github(
@@ -283,10 +282,8 @@ try:
                 )
                 if success:
                     logging.info(f"Successfully uploaded {model_path.name} to first GitHub repository.")
-                else:
-                    logging.error(f"Failed to upload {model_path.name} to first GitHub repository.")
-
-                # Upload to second repository
+                
+                # Upload tflite model to second repository
                 second_github_file_path = f"{SECOND_GITHUB_MODEL_PATH}/{model_path.name}"
                 second_commit_msg = f"Upload updated {model_type} model to second repo: {model_path.name}"
                 success_second = upload_file_to_second_github_repo(

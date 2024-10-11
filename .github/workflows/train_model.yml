@@ -84,7 +84,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Add .keras files
-          git add models/*.keras  # Adjust the path as needed
+          git add models/updated_model.keras  
           
           # Commit changes
           git commit -m "Update .keras files via GitHub Actions" || echo "No changes to commit"
