@@ -92,7 +92,6 @@ def upload_file_to_github(repo_name, file_path, file_content, github_token, comm
         logging.info(f"{action} {file_path} in {repo_name} successfully.")
         return True
     else:
-        logging.error(f"Failed to upload {file_path} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
         return False
 
 emotions = ["Aversion", "Anger", "Happiness", "Fear", "Sadness", "Surprise", "Peace"]
