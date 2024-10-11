@@ -97,4 +97,3 @@ jobs:
           # Push changes
           git push
 
-timeout-minutes: 60
