@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import requests
 
-# Configure logging
+# logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -41,8 +41,8 @@ logging.basicConfig(
 
 # GitHub repository details
 GITHUB_API_URL = "https://api.github.com"
-GITHUB_REPO = 'zh3nru/model_CI'  # Repository in the format 'owner/repo'
-GITHUB_MODEL_PATH = 'data/models'  # Path within the repository to save models
+GITHUB_REPO = 'zh3nru/model_CI' 
+GITHUB_MODEL_PATH = 'data/models' 
 MY_TOKEN = os.getenv('MY_TOKEN')
 
 if not MY_TOKEN:
