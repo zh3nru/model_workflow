@@ -4,12 +4,7 @@ on:
   schedule:
     - cron: '0 0 * * *' # Every midnight UTC time zone
   workflow_dispatch: # Manual trigger
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - '**.gitattributes' # Prevent triggering on .gitattributes changes
-
+  
 concurrency:
   group: train-model
   cancel-in-progress: true
