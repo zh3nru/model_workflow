@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 0 * * *' # Every midnight UTC time zone
   workflow_dispatch: # Manual trigger
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.gitattributes' # Prevent triggering on .gitattributes changes
 
 concurrency:
   group: train-model
@@ -23,6 +28,14 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          lfs: true  # Enable Git LFS support
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs
+          git lfs install
 
       - name: Set Up Python
         uses: actions/setup-python@v4
@@ -46,7 +59,7 @@ jobs:
         id: check_data
         run: |
           python check_new_data.py
-        
+
       - name: Retrieve New Videos
         id: retrieve_data
         if: steps.check_data.outputs.DATA_PRESENT == 'true'
@@ -67,4 +80,21 @@ jobs:
         if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED != 'true'
         run: echo "No new data processed. Skipping training."
 
-    timeout-minutes: 60
+      - name: Commit and Push .keras Files
+        if: steps.retrieve_data.outputs.NEW_DATA_PROCESSED == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add .keras files
+          git add models/*.keras  # Adjust the path as needed
+          
+          # Commit changes
+          git commit -m "Update .keras files via GitHub Actions" || echo "No changes to commit"
+          
+          # Push changes
+          git push
+
+timeout-minutes: 60
