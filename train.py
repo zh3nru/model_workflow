@@ -111,7 +111,7 @@ existing_model_path = updated_model_path / existing_model_file
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
 # Add date to main and tflite model file name
-updated_model_file = f'updated_model.h5' 
+updated_model_file = f'updated_model.keras' 
 updated_model_save_path = updated_model_path / updated_model_file
 
 tflite_model_file = f'updated_model_{current_date}.tflite'
@@ -220,9 +220,10 @@ try:
 
     # Save main model
     emotion_model.save(
-    str(updated_model_save_path),
-    overwrite=True,
-    save_format='h5')
+        str(updated_model_save_path),
+        save_format='keras',
+        include_optimizer=False
+    )
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
     # Second repository path where tflite model will be sent
