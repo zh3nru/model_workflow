@@ -46,13 +46,10 @@ GITHUB_MODEL_PATH = 'data/models'
 MY_TOKEN = os.getenv('MY_TOKEN')
 
 if not MY_TOKEN:
-    logging.critical("GitHub token not found in environment variables. Please set 'MY_TOKEN'.")
+    logging.critical("GitHub token not found in environment variables. No 'MY_TOKEN'.")
     sys.exit(1)
 
 def get_github_file(repo_name, file_path, github_token):
-    """
-    Retrieves the content and SHA of a file from a GitHub repository.
-    """
     url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
     headers = {
         "Authorization": f"Bearer {github_token}",
@@ -67,26 +64,23 @@ def get_github_file(repo_name, file_path, github_token):
         logging.info(f"Successfully fetched {file_path} from {repo_name}.")
         return content, sha
     else:
-        logging.error(f"Failed to fetch {file_path} from GitHub. Status code: {response.status_code}. Response: {response.json()}")
+        logging.error(f"Failed to fetch {file_path} from GitHub rep. Status code: {response.status_code}. Response: {response.json()}")
         return None, None
 
 def upload_file_to_github(repo_name, file_path, file_content, github_token, commit_message="Upload model file"):
-    """
-    Uploads or updates a file in a GitHub repository.
-    """
     url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
     headers = {
         "Authorization": f"Bearer {github_token}",
         "Accept": "application/vnd.github.v3+json"
     }
 
-    # Check if the file already exists to get its SHA
+    # Check if the file already exists
     existing_content, existing_sha = get_github_file(repo_name, file_path, github_token)
 
     data = {
         "message": commit_message,
         "content": b64encode(file_content).decode('utf-8'),
-        "branch": "main"  # Adjust if you're using a different branch
+        "branch": "main"  
     }
 
     if existing_sha:
@@ -102,33 +96,29 @@ def upload_file_to_github(repo_name, file_path, file_content, github_token, comm
         logging.error(f"Failed to upload {file_path} to GitHub. Status code: {response.status_code}. Response: {response.json()}")
         return False
 
-# Define emotions
 emotions = ["Aversion", "Anger", "Happiness", "Fear", "Sadness", "Surprise", "Peace"]
 
-# Paths for training and validation data
+# Path for training and validation data
 train_data_path = Path(os.getenv('TRAIN_DATA_PATH', 'data/train_gen_frames'))
 val_data_path = Path(os.getenv('VAL_DATA_PATH', 'data/train_gen_frames'))
 updated_model_path = Path(os.getenv('UPDATED_MODEL_PATH', 'data/models'))
 
-# Create the directory if it doesn't exist
 updated_model_path.mkdir(parents=True, exist_ok=True)
 
-# Change the default existing model file to use .keras extension
 existing_model_file = os.getenv('EXISTING_MODEL_FILE', 'eMotion.h5')  
 existing_model_path = updated_model_path / existing_model_file
 
-# Get current date string
+# Get current date
 current_date = dt.datetime.now().strftime('%Y%m%d')
 
-# Define updated model filenames with date and .keras extension
+# Add date to main and tflite model file name
 updated_model_file = f'updated_model_{current_date}.keras' 
 updated_model_save_path = updated_model_path / updated_model_file
 
-# Define TFLite model filename with date and .tflite extension
 tflite_model_file = f'updated_model_{current_date}.tflite'
 tflite_model_save_path = updated_model_path / tflite_model_file
 
-# Image data generators with data augmentation for training and rescaling for validation
+# Data augmentation
 train_data_aug = ImageDataGenerator(
     rescale=1./255,
     horizontal_flip=True,
@@ -140,7 +130,6 @@ train_data_aug = ImageDataGenerator(
 validation_data_aug = ImageDataGenerator(rescale=1./255)
 
 try:
-    # Load training data
     train_data = train_data_aug.flow_from_directory(
         str(train_data_path),
         target_size=(64, 64),
@@ -152,7 +141,6 @@ try:
         subset='training'
     )
 
-    # Load validation data
     val_data = train_data_aug.flow_from_directory(
         str(val_data_path),
         target_size=(64, 64),
@@ -174,7 +162,7 @@ except Exception as e:
     sys.exit(1)
 
 try:
-    # Load the existing model
+    # Load current model
     if existing_model_path.exists():
         logging.info(f"Loading existing model from {existing_model_path}")
         emotion_model = load_model(str(existing_model_path))
@@ -192,7 +180,6 @@ try:
         metrics=['accuracy']
     )
 
-    # Define callbacks
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
     checkpoint = ModelCheckpoint(
@@ -213,16 +200,14 @@ try:
         callbacks=[early_stopping, checkpoint]
     )
 
-    # Convert Keras model to TensorFlow Lite model
+    # Convert main model to tflite model
     converter = tf.lite.TFLiteConverter.from_keras_model(emotion_model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     tflite_model = converter.convert()
 
-    # Define paths with appropriate extensions
-    # h5_model_path = updated_model_save_path  # Removed as we're not using .h5
-    tflite_model_path = updated_model_save_path.with_suffix('.tflite')  # Already defined above
+    tflite_model_path = updated_model_save_path.with_suffix('.tflite')
 
-    # Save the converted TensorFlow Lite model
+    # Save tflite model
     with open(tflite_model_save_path, 'wb') as f:
         f.write(tflite_model)
     logging.info(f"TensorFlow Lite model saved to {tflite_model_save_path}")
@@ -234,7 +219,7 @@ try:
                 weights = [w.astype('float16') for w in weights]
                 layer.set_weights(weights)
 
-    # Save the updated Keras model with .keras extension and exclude optimizer state
+    # Save main model
     emotion_model.save(
         str(updated_model_save_path),
         save_format='keras',
@@ -242,27 +227,24 @@ try:
     )
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
-    # Additional repository details
-    SECOND_GITHUB_REPO = 'kai-sotto/hybrid-model'  # The second repository path
-    SECOND_GITHUB_MODEL_PATH = 'assets'  # Path within the second repository
+    # Second repository path where tflite model will be sent
+    SECOND_GITHUB_REPO = 'Kristoferseyan/fix-emotion'  
+    SECOND_GITHUB_MODEL_PATH = 'assets'  
 
     def upload_file_to_second_github_repo(repo_name, file_path, file_content, github_token, commit_message="Upload model file to second repo"):
-        """
-        Uploads or updates a file in the second GitHub repository.
-        """
         url = f"{GITHUB_API_URL}/repos/{repo_name}/contents/{file_path}"
         headers = {
         "Authorization": f"Bearer {github_token}",
         "Accept": "application/vnd.github.v3+json"
         }
 
-        # Check if the file already exists to get its SHA
+        # Check if file already exists
         existing_content, existing_sha = get_github_file(repo_name, file_path, github_token)
 
         data = {
             "message": commit_message,
             "content": b64encode(file_content).decode('utf-8'),
-            "branch": "main"  # Adjust if you're using a different branch
+            "branch": "main"  
         }
 
         if existing_sha:
@@ -279,9 +261,6 @@ try:
             return False
 
     def upload_models():
-        """
-        Uploads the saved model files to the specified GitHub repositories.
-        """
         models_to_upload = {
         'keras': updated_model_save_path,           
         'tflite': tflite_model_save_path
@@ -292,7 +271,7 @@ try:
                 with open(model_path, 'rb') as file:
                     file_content = file.read()
 
-                # Upload to the first repository
+                # Upload to first repository
                 github_file_path = f"{GITHUB_MODEL_PATH}/{model_path.name}"
                 commit_msg = f"Upload updated {model_type} model: {model_path.name}"
                 success = upload_file_to_github(
@@ -303,11 +282,11 @@ try:
                     commit_message=commit_msg
                 )
                 if success:
-                    logging.info(f"Successfully uploaded {model_path.name} to the first GitHub repository.")
+                    logging.info(f"Successfully uploaded {model_path.name} to first GitHub repository.")
                 else:
-                    logging.error(f"Failed to upload {model_path.name} to the first GitHub repository.")
+                    logging.error(f"Failed to upload {model_path.name} to first GitHub repository.")
 
-            # Upload to the second repository
+                # Upload to second repository
                 second_github_file_path = f"{SECOND_GITHUB_MODEL_PATH}/{model_path.name}"
                 second_commit_msg = f"Upload updated {model_type} model to second repo: {model_path.name}"
                 success_second = upload_file_to_second_github_repo(
@@ -318,13 +297,12 @@ try:
                     commit_message=second_commit_msg
                 )
                 if success_second:
-                    logging.info(f"Successfully uploaded {model_path.name} to the second GitHub repository.")
+                    logging.info(f"Successfully uploaded {model_path.name} to second GitHub repository.")
                 else:
-                    logging.error(f"Failed to upload {model_path.name} to the second GitHub repository.")
+                    logging.error(f"Failed to upload {model_path.name} to second GitHub repository.")
             else:
                 logging.warning(f"Model file {model_path} does not exist and cannot be uploaded.")
 
-    # Call the function to upload models to GitHub
     upload_models()
 
 

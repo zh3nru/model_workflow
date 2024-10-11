@@ -8,7 +8,7 @@ import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Constants
+# GitHub repository details
 GITHUB_API_URL = "https://api.github.com"
 GITHUB_REPO = "zh3nru/model_CI"  
 GITHUB_BRANCH = "main"  
@@ -17,7 +17,7 @@ MY_TOKEN = os.getenv('MY_TOKEN')
 def upload_to_github(file_path, github_path):
     try:
         if not MY_TOKEN:
-            logging.error("GitHub token is not set. Please set the MY_TOKEN environment variable.")
+            logging.error("GitHub token is not set. No MY_TOKEN in environment variable.")
             return False
 
         with open(file_path, 'rb') as f:
@@ -68,6 +68,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
             logging.error(f"Cannot open video file: {video_path}")
             return
 
+        # Get video frames per second
         fps = vidcap.get(cv2.CAP_PROP_FPS)
         if fps == 0:
             fps = 25  
@@ -82,6 +83,7 @@ def convert_frames(video_path: Path, output_dir: Path, frames_per_second: int = 
         current_frame = 0
         extracted_frames = 0
 
+         # Process video frames per second
         with tqdm(total=frame_count, desc=f"Extracting frames from {video_path.name}", unit="frame") as pbar:
             while True:
                 success, frame = vidcap.read()
@@ -142,6 +144,6 @@ if __name__ == '__main__':
         if emotion_subfolder.is_dir():
             emotion_name = emotion_subfolder.name
             for video_file in emotion_subfolder.glob('*.mp4'):  
-                output_directory = frames_data_path / emotion_name  #Frames to be saved in specified folder
+                output_directory = frames_data_path / emotion_name 
                 output_directory.mkdir(parents=True, exist_ok=True)
                 convert_frames(video_file, output_directory, frames_per_second=frames_ps)

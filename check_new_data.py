@@ -4,9 +4,7 @@ import logging
 import sys
 
 def setup_logging():
-    """
-    Sets up the logging configuration.
-    """
+    # logging
     logging.basicConfig(
         level=logging.INFO,  
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -16,21 +14,13 @@ def setup_logging():
     )
 
 def get_supabase_client() -> Client:
-    """
-    Retrieves Supabase credentials from environment variables and creates a Supabase client.
     
-    Raises:
-        EnvironmentError: If SUPABASE_URL or SUPABASE_KEY is not set.
-        Exception: If creating the Supabase client fails.
-    
-    Returns:
-        Client: An instance of the Supabase client.
-    """
+    # Retrieves Supabase credentials from environment variables and creates a Supabase client.
     SUPABASE_URL = os.getenv('SUPABASE_URL')
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
     if not SUPABASE_URL or not SUPABASE_KEY:
-        logging.critical("Supabase credentials not found in environment variables. Please set 'SUPABASE_URL' and 'SUPABASE_KEY'.")
+        logging.critical("Supabase credentials not found in environment variables. No 'SUPABASE_URL' and 'SUPABASE_KEY'.")
         raise EnvironmentError("Supabase credentials not found in environment variables.")
 
     try:
@@ -41,21 +31,13 @@ def get_supabase_client() -> Client:
         logging.critical(f"Failed to create Supabase client: {e}")
         raise
 
-def check_data_presence(supabase: Client, table_name: str = 'videos_data'):
-    """
-    Checks if there is any data present in the specified columns of the table.
-
-    Args:
-        supabase (Client): The Supabase client instance.
-        table_name (str): The name of the table to query.
-
-    Raises:
-        Exception: If querying Supabase fails.
-    """
-    logging.info(f"Checking for data presence in table '{table_name}' for 'emotion_class' and 'video_path' columns...")
+def check_data(supabase: Client, table_name: str = 'videos_data'):
+    
+    # Checks if there is any data present in the specified columns of the table.
+    logging.info(f"Checking for data in table '{table_name}' for 'emotion_class' and 'video_path' columns")
 
     try:
-        # Check 'emotion_class' column for any non-null and non-empty entries
+        # Check 'emotion_class' column for data
         emotion_response = (
             supabase.table(table_name)
             .select('id')
@@ -67,7 +49,7 @@ def check_data_presence(supabase: Client, table_name: str = 'videos_data'):
         emotion_exists = len(emotion_response.data) > 0
         logging.info(f"Data exists in 'emotion_class' column: {emotion_exists}")
 
-        # Check 'video_path' column for any non-null and non-empty entries
+        # Check 'video_path' column for data
         video_response = (
             supabase.table(table_name)
             .select('id')
@@ -79,11 +61,10 @@ def check_data_presence(supabase: Client, table_name: str = 'videos_data'):
         video_exists = len(video_response.data) > 0
         logging.info(f"Data exists in 'video_path' column: {video_exists}")
 
-        # Determine overall data presence
         data_present = emotion_exists and video_exists
-        logging.info(f"Overall data presence (both columns have data): {data_present}")
+        logging.info(f"Overall data (both columns have data): {data_present}")
 
-        # Set GitHub Actions output using the new method
+        # Set GitHub Actions output
         with open(os.environ['GITHUB_OUTPUT'], 'a') as gh_output:
             gh_output.write(f'DATA_PRESENT={str(data_present).lower()}\n')
 
@@ -93,11 +74,8 @@ def check_data_presence(supabase: Client, table_name: str = 'videos_data'):
 
 
 def main():
-    """
-    Main function to orchestrate the data presence check.
-    """
     setup_logging()
-    logging.info("Starting the data presence check process.")
+    logging.info("Starting the data check process.")
 
     try:
         # Create a Supabase client
@@ -107,12 +85,12 @@ def main():
         sys.exit(1)
 
     try:
-        check_data_presence(supabase, table_name='videos_data')  
+        check_data(supabase, table_name='videos_data')  
     except Exception as e:
-        logging.critical(f"Failed to check data presence: {e}")
+        logging.critical(f"Failed to check data: {e}")
         sys.exit(1)
 
-    logging.info("Data presence check process completed successfully.")
+    logging.info("Data check process completed successfully.")
 
 if __name__ == '__main__':
     main()
