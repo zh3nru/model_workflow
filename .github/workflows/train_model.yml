@@ -42,7 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check for New Data
+      - name: Check for Data
         id: check_data
         run: |
           python check_new_data.py
