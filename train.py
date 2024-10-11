@@ -220,10 +220,9 @@ try:
 
     # Save main model
     emotion_model.save(
-        str(updated_model_save_path),
-        save_format='h5',
-        include_optimizer=False
-    )
+    str(updated_model_save_path),
+    overwrite=True,
+    save_format='h5')
     logging.info(f"Updated Keras model saved to {updated_model_save_path}")
 
     # Second repository path where tflite model will be sent
