@@ -2,7 +2,7 @@ name: Hybrid Model Training
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Every midnight UTC time zone
+    - cron: '0 0 1 * *' # Every first day of the month, midnight UTC
   workflow_dispatch: # Manual trigger
 
 concurrency:
